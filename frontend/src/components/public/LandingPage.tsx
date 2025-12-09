@@ -51,38 +51,73 @@ export default function LandingPage({ state }: LandingPageProps) {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Efecto de spotlight dorado */}
-      <div className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none" />
+      {/* Imagen de fondo con animación */}
+      <motion.div
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+        className="absolute inset-0 z-0"
+      >
+        <img
+          src="/fondo.png"
+          alt="Trofeo Los Cóndor de Oro"
+          className="w-full h-full object-cover object-center"
+        />
+        {/* Overlay oscuro para mejorar legibilidad */}
+        <div className="absolute inset-0 bg-black/40" />
+      </motion.div>
+
+      {/* Efecto de spotlight dorado animado */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+        className="absolute inset-0 bg-gradient-radial from-gold/10 via-transparent to-transparent pointer-events-none z-[1]"
+      />
+      
+      {/* Efecto de brillo sutil animado */}
+      <motion.div
+        animate={{
+          opacity: [0.3, 0.6, 0.3],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none z-[1]"
+      />
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
         className="max-w-4xl w-full text-center space-y-8 relative z-10"
       >
         <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
           className="space-y-4"
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="flex items-center justify-center gap-2 mb-6"
+            className="flex items-center justify-center gap-6 md:gap-8 lg:gap-12 mb-8"
           >
-            <Trophy className="h-16 w-16 text-gold drop-shadow-[0_0_20px_rgba(212,175,55,0.8)]" />
-            <h1 className="text-6xl md:text-7xl font-bold text-gold drop-shadow-[0_0_30px_rgba(212,175,55,0.6)] tracking-wide">
+            <Trophy className="h-20 w-20 md:h-24 md:w-24 text-gold drop-shadow-[0_0_25px_rgba(212,175,55,0.9)]" />
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-gold drop-shadow-[0_0_40px_rgba(212,175,55,0.8)] tracking-wider leading-tight">
               LOS CÓNDOR DE ORO
             </h1>
+            <Trophy className="h-20 w-20 md:h-24 md:w-24 text-gold drop-shadow-[0_0_25px_rgba(212,175,55,0.9)]" />
           </motion.div>
           
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="text-xl text-gold-light font-medium"
+            transition={{ delay: 0.7 }}
+            className="text-2xl md:text-3xl text-gold-light font-semibold tracking-wide drop-shadow-[0_0_15px_rgba(212,175,55,0.5)]"
           >
             Legión Cóndor
           </motion.p>
@@ -91,17 +126,21 @@ export default function LandingPage({ state }: LandingPageProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="bg-black/60 backdrop-blur-md border-2 border-gold/40 rounded-lg p-8 space-y-6 shadow-[0_0_40px_rgba(212,175,55,0.3)]"
+          transition={{ delay: 0.9 }}
+          className="bg-black/80 backdrop-blur-lg border-2 border-gold/50 rounded-xl p-8 md:p-10 space-y-6 shadow-[0_0_50px_rgba(212,175,55,0.4)]"
         >
-          <h2 className="text-3xl font-bold text-gold drop-shadow-[0_0_15px_rgba(212,175,55,0.5)]">{info.title}</h2>
-          <p className="text-lg text-white/90 leading-relaxed">{info.description}</p>
+          <h2 className="text-2xl md:text-4xl font-bold text-gold drop-shadow-[0_0_20px_rgba(212,175,55,0.6)] tracking-wide">
+            {info.title}
+          </h2>
+          <p className="text-base md:text-xl text-white/95 leading-relaxed font-light">
+            {info.description}
+          </p>
 
           {info.action && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1.1 }}
             >
               <Button
                 size="lg"
@@ -115,9 +154,9 @@ export default function LandingPage({ state }: LandingPageProps) {
 
           {state === 'CLOSED' && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.2 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1.3 }}
             >
               <Button
                 size="lg"
@@ -134,16 +173,17 @@ export default function LandingPage({ state }: LandingPageProps) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="flex items-center justify-center gap-8 text-sm text-gold-light"
+          transition={{ delay: 1.2 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm md:text-base text-gold-light/90"
         >
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span>Clan Legión Cóndor</span>
+            <Users className="h-5 w-5 text-gold" />
+            <span className="font-medium">Clan Legión Cóndor</span>
           </div>
+          <div className="hidden sm:block w-px h-6 bg-gold/30" />
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <span>Premiación Oficial</span>
+            <Calendar className="h-5 w-5 text-gold" />
+            <span className="font-medium">Premiación Oficial</span>
           </div>
         </motion.div>
       </motion.div>
