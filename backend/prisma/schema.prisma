@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id                  String   @id @default(uuid())
+  name                String
+  short_description   String
+  order               Int      @default(0)
+  is_active           Boolean  @default(true)
+  winner_candidate_id String?  @unique
+  winner_announced    Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  nominations         Nomination[]
+  category_candidates CategoryCandidate[]
+  votes               Vote[]
+  winner_candidate    Candidate? @relation("CategoryWinner", fields: [winner_candidate_id], references: [id])
+
+  @@index([order])
+  @@index([is_active])
+}
+
+model Nomination {
+  id            String   @id @default(uuid())
+  category_id   String
+  candidate_id  String
+  created_at    DateTime @default(now())
+
+  category      Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  candidate     Candidate @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+
+  @@unique([category_id, candidate_id])
+  @@index([category_id])
+  @@index([candidate_id])
+  @@index([created_at])
+}
+
+model Candidate {
+  id          String   @id @default(uuid())
+  display_name String   @unique
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  nominations  Nomination[]
+  category_candidates CategoryCandidate[]
+  votes       Vote[]
+  winner_in   Category? @relation("CategoryWinner")
+
+  @@index([is_active])
+  @@index([display_name])
+}
+
+model CategoryCandidate {
+  id          String   @id @default(uuid())
+  category_id String
+  candidate_id String
+  created_at  DateTime @default(now())
+
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+
+  @@unique([category_id, candidate_id])
+  @@index([category_id])
+  @@index([candidate_id])
+}
+
+model Vote {
+  id          String   @id @default(uuid())
+  category_id String
+  candidate_id String
+  created_at  DateTime @default(now())
+
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+
+  @@index([category_id])
+  @@index([candidate_id])
+  @@index([created_at])
+}
+
+model MemberCode {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  used_in_nomination  Boolean  @default(false)
+  used_in_voting      Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@index([code])
+  @@index([used_in_nomination])
+  @@index([used_in_voting])
+}
+
+model EventState {
+  id        String   @id @default("1")
+  state     String   // SETUP | NOMINATIONS | VOTING | CLOSED
+  updated_at DateTime @updatedAt
+}
+
