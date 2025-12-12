@@ -1,5 +1,36 @@
-// API URL - siempre apunta al backend expuesto
-const API_URL = 'http://localhost:3001/api';
+// API URL - detecta automáticamente según el entorno
+function getApiUrl(): string {
+  // Si hay una variable de entorno definida en build time, usarla
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Si estamos en el navegador, detectar automáticamente
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+
+    // Si es localhost o 127.0.0.1, usar localhost:3001
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:3001/api";
+    }
+
+    // En producción (VPS), usar el mismo hostname pero puerto 3001
+    // Esto funciona cuando ambos servicios están en el mismo servidor
+    return `${protocol}//${hostname}:3001/api`;
+  }
+
+  // Fallback para desarrollo (SSR o tests)
+  return "http://localhost:3001/api";
+}
+
+const API_URL = getApiUrl();
+
+// Log para debugging (solo en desarrollo)
+if (import.meta.env.DEV) {
+  console.log("API URL configurada:", API_URL);
+}
 
 export async function apiRequest<T>(
   endpoint: string,
@@ -8,30 +39,31 @@ export async function apiRequest<T>(
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
 
   if (!response.ok) {
-    let errorMessage = 'Error desconocido';
-    
+    let errorMessage = "Error desconocido";
+
     try {
       const error = await response.json();
       errorMessage = error.error || `Error HTTP ${response.status}`;
     } catch {
       // Si no se puede parsear el JSON, usar mensajes según el código de estado
       if (response.status === 0 || response.status >= 500) {
-        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+        errorMessage =
+          "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
       } else if (response.status === 404) {
-        errorMessage = 'El recurso solicitado no fue encontrado.';
+        errorMessage = "El recurso solicitado no fue encontrado.";
       } else if (response.status === 401 || response.status === 403) {
-        errorMessage = 'No tienes permisos para realizar esta acción.';
+        errorMessage = "No tienes permisos para realizar esta acción.";
       } else {
         errorMessage = `Error del servidor (${response.status}). Por favor, intenta nuevamente.`;
       }
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -44,4 +76,3 @@ export function getAuthHeaders(username: string, password: string) {
     Authorization: `Basic ${credentials}`,
   };
 }
-

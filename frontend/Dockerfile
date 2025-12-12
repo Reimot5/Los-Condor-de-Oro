@@ -12,6 +12,10 @@ RUN npm install --frozen-lockfile || npm install
 FROM base AS builder
 WORKDIR /app
 
+# Build argument for API URL
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
