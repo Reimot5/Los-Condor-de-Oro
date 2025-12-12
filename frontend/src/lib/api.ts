@@ -9,7 +9,6 @@ function getApiUrl(): string {
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    const port = window.location.port;
 
     // Si es localhost o 127.0.0.1, usar localhost:3001
     if (hostname === "localhost" || hostname === "127.0.0.1") {

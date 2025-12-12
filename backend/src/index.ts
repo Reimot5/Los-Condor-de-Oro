@@ -15,31 +15,27 @@ const PORT = parseInt(process.env.PORT || "3001", 10);
 
 // Middleware
 // CORS configuration - permite localhost en desarrollo y cualquier origen en producción
-const corsOptions = {
-  origin: (
-    origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
-  ) => {
-    // En desarrollo, solo permitir localhost
-    if (process.env.NODE_ENV === "development") {
-      const allowedOrigins = ["http://localhost:3000", "http://localhost:3001"];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    } else {
-      // En producción, permitir cualquier origen (o configurar específicos con variable de entorno)
-      const allowedOrigins = process.env.CORS_ORIGINS
-        ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-        : true; // Permitir todos si no se especifica
-      callback(null, allowedOrigins);
-    }
-  },
-  credentials: true,
+const getCorsOrigin = (): boolean | string[] => {
+  // En desarrollo, solo permitir localhost
+  if (process.env.NODE_ENV === "development") {
+    return ["http://localhost:3000", "http://localhost:3001"];
+  }
+  
+  // En producción, permitir cualquier origen (o configurar específicos con variable de entorno)
+  if (process.env.CORS_ORIGINS) {
+    return process.env.CORS_ORIGINS.split(",").map((o) => o.trim());
+  }
+  
+  // Permitir todos si no se especifica
+  return true;
 };
 
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: getCorsOrigin(),
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Request logging middleware
