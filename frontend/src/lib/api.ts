@@ -14,8 +14,25 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    let errorMessage = 'Error desconocido';
+    
+    try {
+      const error = await response.json();
+      errorMessage = error.error || `Error HTTP ${response.status}`;
+    } catch {
+      // Si no se puede parsear el JSON, usar mensajes según el código de estado
+      if (response.status === 0 || response.status >= 500) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+      } else if (response.status === 404) {
+        errorMessage = 'El recurso solicitado no fue encontrado.';
+      } else if (response.status === 401 || response.status === 403) {
+        errorMessage = 'No tienes permisos para realizar esta acción.';
+      } else {
+        errorMessage = `Error del servidor (${response.status}). Por favor, intenta nuevamente.`;
+      }
+    }
+    
+    throw new Error(errorMessage);
   }
 
   return response.json();

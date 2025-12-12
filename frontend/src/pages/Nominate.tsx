@@ -73,14 +73,15 @@ export default function Nominate() {
       } else {
         toast({
           title: 'Código inválido',
-          description: data.error || 'El código no es válido o no puedes nominar en este momento',
+          description: data.error || 'El código ingresado no es válido o no puedes nominar en este momento',
           variant: 'destructive',
         })
       }
     } catch (error: any) {
+      const errorMessage = error.message || 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
       toast({
-        title: 'Error',
-        description: error.message || 'No se pudo validar el código',
+        title: 'Error de conexión',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -140,8 +141,8 @@ export default function Nominate() {
       navigate('/')
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'No se pudieron registrar las nominaciones',
+        title: 'Error al registrar',
+        description: error.message || 'No se pudieron registrar las nominaciones. Por favor, intenta nuevamente.',
         variant: 'destructive',
       })
     } finally {

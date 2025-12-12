@@ -42,14 +42,15 @@ export default function ValidateCode() {
       } else {
         toast({
           title: 'Código inválido',
-          description: data.error || 'El código no es válido o ya fue usado',
+          description: data.error || 'El código ingresado no es válido o ya fue utilizado',
           variant: 'destructive',
         })
       }
     } catch (error: any) {
+      const errorMessage = error.message || 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
       toast({
-        title: 'Error',
-        description: error.message || 'No se pudo validar el código',
+        title: 'Error de conexión',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {

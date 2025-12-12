@@ -6,6 +6,7 @@ import { prisma } from "./lib/prisma.js";
 // Import routes
 import publicRoutes from "./routes/public.js";
 import adminRoutes from "./routes/admin.js";
+import { requestLogger } from "./middleware/logger.js";
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// Request logging middleware
+app.use(requestLogger);
 
 // Health check
 app.get("/health", (req, res) => {
