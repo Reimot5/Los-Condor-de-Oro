@@ -232,9 +232,7 @@ router.post("/candidates", async (req, res) => {
     const { display_name, is_active } = req.body;
 
     if (!display_name) {
-      return res
-        .status(400)
-        .json({ error: "Nombre es requerido" });
+      return res.status(400).json({ error: "Nombre es requerido" });
     }
 
     const candidate = await prisma.candidate.create({
@@ -247,8 +245,10 @@ router.post("/candidates", async (req, res) => {
     return res.json(candidate);
   } catch (error: any) {
     console.error("Error creating candidate:", error);
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: "Ya existe un candidato con ese nombre" });
+    if (error.code === "P2002") {
+      return res
+        .status(400)
+        .json({ error: "Ya existe un candidato con ese nombre" });
     }
     return res.status(500).json({ error: "Error al crear candidato" });
   }
@@ -285,13 +285,42 @@ router.delete("/candidates", async (req, res) => {
       return res.status(400).json({ error: "ID es requerido" });
     }
 
+    // Verificar que el candidato existe antes de intentar eliminarlo
+    const candidate = await prisma.candidate.findUnique({
+      where: { id },
+    });
+
+    if (!candidate) {
+      return res
+        .status(404)
+        .json({ error: "El candidato no existe o ya fue eliminado" });
+    }
+
     await prisma.candidate.delete({
       where: { id },
     });
 
     return res.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting candidate:", error);
+
+    // Manejar error específico de Prisma cuando el registro no existe
+    if (error.code === "P2025") {
+      return res
+        .status(404)
+        .json({ error: "El candidato no existe o ya fue eliminado" });
+    }
+
+    // Manejar otros errores de Prisma
+    if (error.code && error.code.startsWith("P")) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "No se puede eliminar el candidato debido a restricciones de la base de datos",
+        });
+    }
+
     return res.status(500).json({ error: "Error al eliminar candidato" });
   }
 });
@@ -365,8 +394,8 @@ router.post("/categories/select-candidates", async (req, res) => {
 
     const max = max_candidates || 5;
     if (candidate_ids.length > max) {
-      return res.status(400).json({ 
-        error: `Solo se pueden seleccionar hasta ${max} candidatos por categoría` 
+      return res.status(400).json({
+        error: `Solo se pueden seleccionar hasta ${max} candidatos por categoría`,
       });
     }
 
@@ -475,10 +504,10 @@ router.get("/codes", async (req, res) => {
       const visibleStart = Math.floor(length * 0.3); // Mostrar primeros 30%
       const visibleEnd = Math.floor(length * 0.2); // Mostrar últimos 20%
       const censored = "*".repeat(length - visibleStart - visibleEnd);
-      
-      const censoredCode = 
-        codeStr.substring(0, visibleStart) + 
-        censored + 
+
+      const censoredCode =
+        codeStr.substring(0, visibleStart) +
+        censored +
         codeStr.substring(length - visibleEnd);
 
       return {
@@ -539,7 +568,9 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
     const data = XLSX.utils.sheet_to_json(worksheet);
 
     if (!Array.isArray(data) || data.length === 0) {
-      return res.status(400).json({ error: "El archivo está vacío o no es válido" });
+      return res
+        .status(400)
+        .json({ error: "El archivo está vacío o no es válido" });
     }
 
     // Esperamos columnas: display_name, is_active (opcional)
@@ -548,8 +579,18 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i] as any;
-      const display_name = row.display_name || row["Nombre"] || row["display_name"] || row["Nombre del Candidato"] || row["Miembro"];
-      const is_active = row.is_active !== undefined ? row.is_active : (row["Activo"] !== undefined ? row["Activo"] : true);
+      const display_name =
+        row.display_name ||
+        row["Nombre"] ||
+        row["display_name"] ||
+        row["Nombre del Candidato"] ||
+        row["Miembro"];
+      const is_active =
+        row.is_active !== undefined
+          ? row.is_active
+          : row["Activo"] !== undefined
+          ? row["Activo"]
+          : true;
 
       if (!display_name) {
         errors.push(`Fila ${i + 2}: Falta el nombre del candidato`);
@@ -580,7 +621,9 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
         });
         created.push(createdCandidate);
       } catch (error: any) {
-        errors.push(`Error al crear candidato ${candidate.display_name}: ${error.message}`);
+        errors.push(
+          `Error al crear candidato ${candidate.display_name}: ${error.message}`
+        );
       }
     }
 
@@ -592,9 +635,10 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
     });
   } catch (error: any) {
     console.error("Error importing candidates:", error);
-    return res.status(500).json({ error: "Error al importar candidatos: " + error.message });
+    return res
+      .status(500)
+      .json({ error: "Error al importar candidatos: " + error.message });
   }
 });
 
 export default router;
-

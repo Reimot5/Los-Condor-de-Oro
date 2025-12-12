@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { apiRequest, getAuthHeaders } from '@/lib/api'
+import { apiRequest, apiRequestFormData, getAuthHeaders } from '@/lib/api'
 
 interface Candidate {
   id: string
@@ -42,10 +42,12 @@ export default function AdminCandidates() {
   const [showImportForm, setShowImportForm] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     display_name: '',
     is_active: true,
   })
+  const deletingRef = useRef<string | null>(null)
   const { toast } = useToast()
 
   const username = localStorage.getItem('admin_username') || ''
@@ -100,6 +102,15 @@ export default function AdminCandidates() {
   }
 
   const handleDelete = async (id: string) => {
+    // Prevenir múltiples ejecuciones usando ref (más rápido que el estado)
+    if (deletingRef.current === id || deletingId === id) {
+      return
+    }
+
+    // Establecer inmediatamente para prevenir doble ejecución
+    deletingRef.current = id
+    setDeletingId(id)
+    
     try {
       await apiRequest(`/admin/candidates?id=${id}`, {
         method: 'DELETE',
@@ -111,12 +122,22 @@ export default function AdminCandidates() {
         description: 'El candidato se eliminó correctamente',
       })
       fetchCandidates()
-    } catch (error) {
+    } catch (error: any) {
+      // Si el error es 404, significa que ya fue eliminado (probablemente en una petición anterior)
+      // No mostrar error en ese caso, solo refrescar la lista silenciosamente
+      if (error.status === 404 || error.message?.includes('404') || error.message?.includes('no existe')) {
+        fetchCandidates()
+        return
+      }
+      
       toast({
         title: 'Error',
-        description: 'Error al eliminar candidato',
+        description: error.message || 'Error al eliminar candidato',
         variant: 'destructive',
       })
+    } finally {
+      deletingRef.current = null
+      setDeletingId(null)
     }
   }
 
@@ -145,18 +166,12 @@ export default function AdminCandidates() {
       const formData = new FormData()
       formData.append('file', importFile)
 
-      const response = await fetch('http://localhost:3001/api/admin/candidates/import', {
-        method: 'POST',
-        headers: getAuthHeaders(username, password),
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al importar')
-      }
-
-      const data = await response.json()
+      const data = await apiRequestFormData<{
+        success: boolean
+        imported: number
+        total: number
+        errors?: string[]
+      }>('/admin/candidates/import', formData, getAuthHeaders(username, password))
 
       toast({
         title: 'Importación exitosa',
@@ -171,6 +186,7 @@ export default function AdminCandidates() {
       setShowImportForm(false)
       fetchCandidates()
     } catch (error: any) {
+      console.error('Error al importar candidatos:', error)
       toast({
         title: 'Error',
         description: error.message || 'Error al importar candidatos',
@@ -346,9 +362,17 @@ export default function AdminCandidates() {
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(candidate.id)}>
-                          Eliminar
+                        <AlertDialogCancel disabled={deletingId === candidate.id}>
+                          Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleDelete(candidate.id)
+                          }}
+                          disabled={deletingId === candidate.id}
+                        >
+                          {deletingId === candidate.id ? 'Eliminando...' : 'Eliminar'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
