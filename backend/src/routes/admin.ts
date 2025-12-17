@@ -334,11 +334,21 @@ router.post("/candidates", profileImageUpload.single("profile_image"), async (re
       profile_image_url = `/uploads/candidates/${req.file.filename}`;
     }
 
+    // Convertir is_active de string a boolean si viene como string
+    let isActiveBool: boolean = true;
+    if (is_active !== undefined) {
+      if (typeof is_active === "string") {
+        isActiveBool = is_active.toLowerCase() === "true";
+      } else {
+        isActiveBool = Boolean(is_active);
+      }
+    }
+
     const candidate = await prisma.candidate.create({
       data: {
         display_name: display_name.trim(),
         profile_image_url,
-        is_active: is_active !== undefined ? is_active : true,
+        is_active: isActiveBool,
       },
     });
 
@@ -371,9 +381,19 @@ router.put("/candidates", profileImageUpload.single("profile_image"), async (req
       return res.status(404).json({ error: "Candidato no encontrado" });
     }
 
+    // Convertir is_active de string a boolean si viene como string
+    let isActiveBool: boolean | undefined = undefined;
+    if (is_active !== undefined) {
+      if (typeof is_active === "string") {
+        isActiveBool = is_active.toLowerCase() === "true";
+      } else {
+        isActiveBool = Boolean(is_active);
+      }
+    }
+
     const updateData: any = {
       ...(display_name && { display_name }),
-      ...(is_active !== undefined && { is_active }),
+      ...(isActiveBool !== undefined && { is_active: isActiveBool }),
     };
 
     // Si se subió una nueva imagen
