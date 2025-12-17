@@ -19,42 +19,49 @@ router.post("/validate-code", async (req, res) => {
     if (!memberCode) {
       return res.json({
         valid: false,
-        error: "El código ingresado no existe. Verifica que esté escrito correctamente.",
+        error:
+          "El código ingresado no existe. Verifica que esté escrito correctamente.",
       });
     }
 
     const eventState = await prisma.eventState.findFirst();
 
     if (!eventState) {
-      return res.status(500).json({ error: "Estado del evento no configurado" });
+      return res
+        .status(500)
+        .json({ error: "Estado del evento no configurado" });
     }
 
     // Validar según el estado
     if (eventState.state === "NOMINATIONS" && memberCode.used_in_nomination) {
       return res.json({
         valid: false,
-        error: "Este código ya fue utilizado para nominar. Cada código solo puede usarse una vez.",
+        error:
+          "Este código ya fue utilizado para nominar. Cada código solo puede usarse una vez.",
       });
     }
 
     if (eventState.state === "VOTING" && memberCode.used_in_voting) {
       return res.json({
         valid: false,
-        error: "Este código ya fue utilizado para votar. Cada código solo puede usarse una vez.",
+        error:
+          "Este código ya fue utilizado para votar. Cada código solo puede usarse una vez.",
       });
     }
 
     if (eventState.state === "SETUP") {
       return res.json({
         valid: false,
-        error: "El evento aún no ha comenzado. Por favor, espera a que se abra la etapa de nominaciones.",
+        error:
+          "El evento aún no ha comenzado. Por favor, espera a que se abra la etapa de nominaciones.",
       });
     }
 
     if (eventState.state === "CLOSED") {
       return res.json({
         valid: false,
-        error: "El evento ha finalizado. Ya no se pueden realizar nominaciones ni votos.",
+        error:
+          "El evento ha finalizado. Ya no se pueden realizar nominaciones ni votos.",
       });
     }
 
@@ -64,7 +71,10 @@ router.post("/validate-code", async (req, res) => {
     });
   } catch (error) {
     console.error("Error validating code:", error);
-    return res.status(500).json({ error: "Ocurrió un error al validar el código. Por favor, intenta nuevamente." });
+    return res.status(500).json({
+      error:
+        "Ocurrió un error al validar el código. Por favor, intenta nuevamente.",
+    });
   }
 });
 
@@ -82,9 +92,9 @@ router.post("/nominate", async (req, res) => {
       const eventState = await prisma.eventState.findFirst();
 
       if (!eventState || eventState.state !== "NOMINATIONS") {
-        return res
-          .status(400)
-          .json({ error: "No se pueden realizar nominaciones en este momento" });
+        return res.status(400).json({
+          error: "No se pueden realizar nominaciones en este momento",
+        });
       }
 
       const memberCode = await prisma.memberCode.findUnique({
@@ -92,13 +102,17 @@ router.post("/nominate", async (req, res) => {
       });
 
       if (!memberCode) {
-        return res.status(400).json({ error: "El código ingresado no es válido. Verifica que esté escrito correctamente." });
+        return res.status(400).json({
+          error:
+            "El código ingresado no es válido. Verifica que esté escrito correctamente.",
+        });
       }
 
       if (memberCode.used_in_nomination) {
-        return res
-          .status(400)
-          .json({ error: "Este código ya fue utilizado para nominar. Cada código solo puede usarse una vez." });
+        return res.status(400).json({
+          error:
+            "Este código ya fue utilizado para nominar. Cada código solo puede usarse una vez.",
+        });
       }
 
       // Obtener todas las categorías activas
@@ -123,7 +137,9 @@ router.post("/nominate", async (req, res) => {
 
       if (missingCategories.length > 0) {
         return res.status(400).json({
-          error: `Faltan ${missingCategories.length} categoría${missingCategories.length > 1 ? 's' : ''} por completar. Debes nominar en todas las categorías activas.`,
+          error: `Faltan ${missingCategories.length} categoría${
+            missingCategories.length > 1 ? "s" : ""
+          } por completar. Debes nominar en todas las categorías activas.`,
         });
       }
 
@@ -134,7 +150,10 @@ router.post("/nominate", async (req, res) => {
         });
 
         if (!category || !category.is_active) {
-          return res.status(400).json({ error: "Una de las categorías seleccionadas no es válida o está inactiva." });
+          return res.status(400).json({
+            error:
+              "Una de las categorías seleccionadas no es válida o está inactiva.",
+          });
         }
 
         const candidate = await prisma.candidate.findUnique({
@@ -142,17 +161,19 @@ router.post("/nominate", async (req, res) => {
         });
 
         if (!candidate || !candidate.is_active) {
-          return res.status(400).json({ error: "Uno de los candidatos seleccionados no es válido o está inactivo." });
+          return res.status(400).json({
+            error:
+              "Uno de los candidatos seleccionados no es válido o está inactivo.",
+          });
         }
       }
 
-      // Crear todas las nominaciones
+      // Crear todas las nominaciones (permitir múltiples nominaciones del mismo candidato en la misma categoría)
       await prisma.nomination.createMany({
         data: nominations.map((nom: any) => ({
           category_id: nom.category_id,
           candidate_id: nom.candidate_id,
         })),
-        skipDuplicates: true,
       });
 
       // Marcar código como usado
@@ -175,9 +196,10 @@ router.post("/nominate", async (req, res) => {
     const eventState = await prisma.eventState.findFirst();
 
     if (!eventState || eventState.state !== "NOMINATIONS") {
-      return res
-        .status(400)
-        .json({ error: "No se pueden realizar nominaciones en este momento. El evento no está en etapa de nominaciones." });
+      return res.status(400).json({
+        error:
+          "No se pueden realizar nominaciones en este momento. El evento no está en etapa de nominaciones.",
+      });
     }
 
     const memberCode = await prisma.memberCode.findUnique({
@@ -210,19 +232,12 @@ router.post("/nominate", async (req, res) => {
       return res.status(400).json({ error: "Candidato no válido" });
     }
 
-    // Crear la nominación (o actualizar si ya existe)
-    await prisma.nomination.upsert({
-      where: {
-        category_id_candidate_id: {
-          category_id,
-          candidate_id,
-        },
-      },
-      create: {
+    // Crear la nominación (permitir múltiples nominaciones del mismo candidato en la misma categoría)
+    await prisma.nomination.create({
+      data: {
         category_id,
         candidate_id,
       },
-      update: {},
     });
 
     // Marcar código como usado
@@ -237,10 +252,10 @@ router.post("/nominate", async (req, res) => {
     });
   } catch (error: any) {
     console.error("Error creating nomination:", error);
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: "Ya has nominado a este candidato en esta categoría." });
-    }
-    return res.status(500).json({ error: "Ocurrió un error al registrar las nominaciones. Por favor, intenta nuevamente." });
+    return res.status(500).json({
+      error:
+        "Ocurrió un error al registrar las nominaciones. Por favor, intenta nuevamente.",
+    });
   }
 });
 
@@ -256,9 +271,10 @@ router.post("/vote", async (req, res) => {
     const eventState = await prisma.eventState.findFirst();
 
     if (!eventState || eventState.state !== "VOTING") {
-      return res
-        .status(400)
-        .json({ error: "No se pueden realizar votos en este momento. El evento no está en etapa de votación." });
+      return res.status(400).json({
+        error:
+          "No se pueden realizar votos en este momento. El evento no está en etapa de votación.",
+      });
     }
 
     const memberCode = await prisma.memberCode.findUnique({
@@ -266,13 +282,17 @@ router.post("/vote", async (req, res) => {
     });
 
     if (!memberCode) {
-      return res.status(400).json({ error: "El código ingresado no es válido. Verifica que esté escrito correctamente." });
+      return res.status(400).json({
+        error:
+          "El código ingresado no es válido. Verifica que esté escrito correctamente.",
+      });
     }
 
     if (memberCode.used_in_voting) {
-      return res
-        .status(400)
-        .json({ error: "Este código ya fue utilizado para votar. Cada código solo puede usarse una vez." });
+      return res.status(400).json({
+        error:
+          "Este código ya fue utilizado para votar. Cada código solo puede usarse una vez.",
+      });
     }
 
     // Obtener todas las categorías activas
@@ -297,7 +317,9 @@ router.post("/vote", async (req, res) => {
 
     if (missingCategories.length > 0) {
       return res.status(400).json({
-        error: `Faltan ${missingCategories.length} categoría${missingCategories.length > 1 ? 's' : ''} por completar. Debes votar en todas las categorías activas.`,
+        error: `Faltan ${missingCategories.length} categoría${
+          missingCategories.length > 1 ? "s" : ""
+        } por completar. Debes votar en todas las categorías activas.`,
       });
     }
 
@@ -309,7 +331,8 @@ router.post("/vote", async (req, res) => {
 
       if (!candidate || !candidate.is_active) {
         return res.status(400).json({
-          error: "Uno de los candidatos seleccionados no es válido o está inactivo.",
+          error:
+            "Uno de los candidatos seleccionados no es válido o está inactivo.",
         });
       }
 
@@ -324,9 +347,10 @@ router.post("/vote", async (req, res) => {
       });
 
       if (!categoryCandidate) {
-        return res
-          .status(400)
-          .json({ error: "El candidato seleccionado no está disponible para esta categoría. Solo puedes votar por los candidatos preseleccionados." });
+        return res.status(400).json({
+          error:
+            "El candidato seleccionado no está disponible para esta categoría. Solo puedes votar por los candidatos preseleccionados.",
+        });
       }
     }
 
@@ -350,7 +374,10 @@ router.post("/vote", async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating votes:", error);
-    return res.status(500).json({ error: "Ocurrió un error al registrar los votos. Por favor, intenta nuevamente." });
+    return res.status(500).json({
+      error:
+        "Ocurrió un error al registrar los votos. Por favor, intenta nuevamente.",
+    });
   }
 });
 
@@ -394,6 +421,7 @@ router.get("/categories", async (req, res) => {
         ? cat.category_candidates?.map((cc: any) => ({
             id: cc.candidate.id,
             display_name: cc.candidate.display_name,
+            profile_image_url: cc.candidate.profile_image_url,
           })) || []
         : undefined,
     }));
@@ -414,6 +442,7 @@ router.get("/candidates", async (req, res) => {
       select: {
         id: true,
         display_name: true,
+        profile_image_url: true,
       },
     });
 
@@ -462,7 +491,10 @@ router.get("/winners", async (req, res) => {
           };
         });
 
-        const maxVotes = Math.max(...candidateVotes.map((cv: any) => cv.votes), 0);
+        const maxVotes = Math.max(
+          ...candidateVotes.map((cv: any) => cv.votes),
+          0
+        );
         const winner = candidateVotes.find((cv: any) => cv.votes === maxVotes);
 
         return {
@@ -476,9 +508,10 @@ router.get("/winners", async (req, res) => {
         };
       }
 
-      const winnerVotes = category.winner_candidate?.votes.filter(
-        (v: any) => v.category_id === category.id
-      ) || [];
+      const winnerVotes =
+        category.winner_candidate?.votes.filter(
+          (v: any) => v.category_id === category.id
+        ) || [];
 
       return {
         category_id: category.id,
@@ -486,6 +519,7 @@ router.get("/winners", async (req, res) => {
         category_description: category.short_description,
         candidate_id: category.winner_candidate_id,
         candidate_name: category.winner_candidate?.display_name || null,
+        profile_image_url: category.winner_candidate?.profile_image_url || null,
         votes: winnerVotes.length,
         announced: category.winner_announced,
       };
@@ -499,4 +533,3 @@ router.get("/winners", async (req, res) => {
 });
 
 export default router;
-

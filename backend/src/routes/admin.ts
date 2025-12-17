@@ -3,7 +3,53 @@ import multer from "multer";
 import XLSX from "xlsx";
 import { prisma } from "../lib/prisma.js";
 import { verifyAdmin } from "../middleware/auth.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import AdmZip from "adm-zip";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Asegurar que el directorio de uploads existe
+const uploadsDir = path.join(__dirname, "../../uploads/candidates");
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o755 });
+  }
+} catch (error) {
+  console.error("Error creating uploads directory:", error);
+  // Continuar de todas formas, el directorio puede existir o crearse después
+}
+
+// Configurar multer para guardar imágenes de perfil
+const profileImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      // Generar nombre único: timestamp-uuid.extensión
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const ext = path.extname(file.originalname);
+      cb(null, `profile-${uniqueSuffix}${ext}`);
+    },
+  }),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    // Solo aceptar imágenes
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten archivos de imagen (JPG, PNG, WEBP, GIF)"));
+    }
+  },
+});
+
+// Multer para archivos Excel (mantener el original)
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
@@ -176,6 +222,7 @@ router.get("/nominations", async (req, res) => {
           category_name: nom.category.name,
           candidate_id: nom.candidate_id,
           candidate_name: nom.candidate.display_name,
+          profile_image_url: nom.candidate.profile_image_url,
           count: 0,
           first_nomination: nom.created_at,
         };
@@ -192,6 +239,53 @@ router.get("/nominations", async (req, res) => {
   } catch (error) {
     console.error("Error fetching nominations:", error);
     return res.status(500).json({ error: "Error al obtener nominaciones" });
+  }
+});
+
+// Votes
+router.get("/votes", async (req, res) => {
+  try {
+    const categoryId = req.query.category_id as string | undefined;
+
+    const where: any = {};
+    if (categoryId) {
+      where.category_id = categoryId;
+    }
+
+    const votes = await prisma.vote.findMany({
+      where,
+      include: {
+        category: true,
+        candidate: true,
+      },
+      orderBy: { created_at: "desc" },
+    });
+
+    // Agrupar por candidato y categoría, contar votos
+    const grouped = votes.reduce((acc: any, vote) => {
+      const key = `${vote.category_id}-${vote.candidate_id}`;
+      if (!acc[key]) {
+        acc[key] = {
+          category_id: vote.category_id,
+          category_name: vote.category.name,
+          candidate_id: vote.candidate_id,
+          candidate_name: vote.candidate.display_name,
+          count: 0,
+          first_vote: vote.created_at,
+        };
+      }
+      acc[key].count += 1;
+      return acc;
+    }, {});
+
+    const result = Object.values(grouped);
+    // Ordenar por cantidad de votos (descendente)
+    result.sort((a: any, b: any) => b.count - a.count);
+
+    return res.json(result);
+  } catch (error) {
+    console.error("Error fetching votes:", error);
+    return res.status(500).json({ error: "Error al obtener votos" });
   }
 });
 
@@ -227,7 +321,7 @@ router.get("/candidates", async (req, res) => {
   }
 });
 
-router.post("/candidates", async (req, res) => {
+router.post("/candidates", profileImageUpload.single("profile_image"), async (req, res) => {
   try {
     const { display_name, is_active } = req.body;
 
@@ -235,9 +329,15 @@ router.post("/candidates", async (req, res) => {
       return res.status(400).json({ error: "Nombre es requerido" });
     }
 
+    let profile_image_url: string | null = null;
+    if (req.file) {
+      profile_image_url = `/uploads/candidates/${req.file.filename}`;
+    }
+
     const candidate = await prisma.candidate.create({
       data: {
         display_name: display_name.trim(),
+        profile_image_url,
         is_active: is_active !== undefined ? is_active : true,
       },
     });
@@ -254,7 +354,7 @@ router.post("/candidates", async (req, res) => {
   }
 });
 
-router.put("/candidates", async (req, res) => {
+router.put("/candidates", profileImageUpload.single("profile_image"), async (req, res) => {
   try {
     const { id, display_name, is_active } = req.body;
 
@@ -262,12 +362,43 @@ router.put("/candidates", async (req, res) => {
       return res.status(400).json({ error: "ID es requerido" });
     }
 
+    // Obtener candidato actual para eliminar imagen anterior si existe
+    const currentCandidate = await prisma.candidate.findUnique({
+      where: { id },
+    });
+
+    if (!currentCandidate) {
+      return res.status(404).json({ error: "Candidato no encontrado" });
+    }
+
+    const updateData: any = {
+      ...(display_name && { display_name }),
+      ...(is_active !== undefined && { is_active }),
+    };
+
+    // Si se subió una nueva imagen
+    if (req.file) {
+      // Eliminar imagen anterior si existe
+      if (currentCandidate.profile_image_url) {
+        const oldImagePath = path.join(
+          __dirname,
+          "../../",
+          currentCandidate.profile_image_url.replace(/^\/uploads\//, "uploads/")
+        );
+        try {
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        } catch (err) {
+          console.error("Error eliminando imagen anterior:", err);
+        }
+      }
+      updateData.profile_image_url = `/uploads/candidates/${req.file.filename}`;
+    }
+
     const candidate = await prisma.candidate.update({
       where: { id },
-      data: {
-        ...(display_name && { display_name }),
-        ...(is_active !== undefined && { is_active }),
-      },
+      data: updateData,
     });
 
     return res.json(candidate);
@@ -555,14 +686,78 @@ router.get("/codes/stats", async (req, res) => {
   }
 });
 
-// Import candidates from Excel
+// Función helper para extraer el nombre después del prefijo " | "
+function extractNameAfterPrefix(name: string): string {
+  // Buscar el patrón " | " (espacio, pipe, espacio) y extraer lo que viene después
+  const match = name.match(/\s+\|\s+(.+)$/);
+  if (match && match[1]) {
+    return match[1].trim().toLowerCase();
+  }
+  // Si no hay prefijo, devolver el nombre completo normalizado
+  return name.trim().toLowerCase();
+}
+
+// Import candidates from Excel with images (ZIP file)
 router.post("/candidates/import", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No se proporcionó archivo" });
     }
 
-    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    let workbook: XLSX.WorkBook;
+    let imageMap: Map<string, Buffer> = new Map();
+
+    // Verificar si es un archivo ZIP
+    const isZip = 
+      req.file.mimetype === "application/zip" || 
+      req.file.mimetype === "application/x-zip-compressed" ||
+      req.file.originalname.toLowerCase().endsWith(".zip");
+
+    if (isZip) {
+      try {
+        const zip = new AdmZip(req.file.buffer);
+        const zipEntries = zip.getEntries();
+
+        // Buscar el archivo Excel y las imágenes
+        let excelEntry = null;
+        for (const entry of zipEntries) {
+          const entryName = entry.entryName.toLowerCase();
+          
+          // Buscar archivo Excel
+          if ((entryName.endsWith(".xlsx") || entryName.endsWith(".xls")) && !entry.isDirectory) {
+            excelEntry = entry;
+          }
+          
+          // Buscar imágenes WEBP y GIF
+          if ((entryName.endsWith(".webp") || entryName.endsWith(".gif")) && !entry.isDirectory) {
+            const ext = entryName.endsWith(".webp") ? ".webp" : ".gif";
+            const imageName = path.basename(entry.entryName, ext);
+            // Normalizar el nombre del archivo (sin prefijo, ya viene limpio)
+            const normalizedImageName = imageName.trim().toLowerCase();
+            // Guardar el buffer de la imagen
+            imageMap.set(normalizedImageName, entry.getData());
+            // Guardar también la extensión para usarla al guardar el archivo
+            imageMap.set(`${normalizedImageName}_ext`, Buffer.from(ext));
+          }
+        }
+
+        if (!excelEntry) {
+          return res.status(400).json({ 
+            error: "No se encontró archivo Excel (.xlsx o .xls) en el ZIP" 
+          });
+        }
+
+        workbook = XLSX.read(excelEntry.getData(), { type: "buffer" });
+      } catch (zipError: any) {
+        return res.status(400).json({ 
+          error: "Error al procesar archivo ZIP: " + zipError.message 
+        });
+      }
+    } else {
+      // Si no es ZIP, procesar como Excel normal
+      workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    }
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
@@ -597,9 +792,18 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
         continue;
       }
 
+      const displayNameTrimmed = String(display_name).trim();
+      // Extraer el nombre después del prefijo " | " para buscar la imagen
+      const extractedName = extractNameAfterPrefix(displayNameTrimmed);
+      
+      // Buscar imagen (puede ser .webp o .gif)
+      const imageBuffer = imageMap.get(extractedName) || null;
+      
       candidates.push({
-        display_name: String(display_name).trim(),
+        display_name: displayNameTrimmed, // Mantener el nombre original completo para la BD
         is_active: Boolean(is_active),
+        imageBuffer,
+        extractedName, // Guardar para poder obtener la extensión después
       });
     }
 
@@ -610,14 +814,45 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
       });
     }
 
-    // Crear candidatos (usar upsert para evitar duplicados)
+    // Crear candidatos y guardar imágenes
     const created = [];
+    let imagesImported = 0;
+    
     for (const candidate of candidates) {
       try {
+        let profile_image_url: string | null = null;
+
+        // Si hay imagen, guardarla
+        if (candidate.imageBuffer) {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          // Obtener la extensión guardada o usar .webp por defecto
+          const extBuffer = imageMap.get(`${candidate.extractedName}_ext`);
+          const ext = extBuffer ? extBuffer.toString() : ".webp";
+          const filename = `profile-${uniqueSuffix}${ext}`;
+          const filePath = path.join(uploadsDir, filename);
+          
+          try {
+            fs.writeFileSync(filePath, candidate.imageBuffer);
+            profile_image_url = `/uploads/candidates/${filename}`;
+            imagesImported++;
+          } catch (fileError: any) {
+            errors.push(
+              `Error al guardar imagen para ${candidate.display_name}: ${fileError.message}`
+            );
+          }
+        }
+
         const createdCandidate = await prisma.candidate.upsert({
           where: { display_name: candidate.display_name },
-          update: { is_active: candidate.is_active },
-          create: candidate,
+          update: { 
+            is_active: candidate.is_active,
+            ...(profile_image_url && { profile_image_url }),
+          },
+          create: {
+            display_name: candidate.display_name,
+            is_active: candidate.is_active,
+            profile_image_url,
+          },
         });
         created.push(createdCandidate);
       } catch (error: any) {
@@ -631,6 +866,7 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
       success: true,
       imported: created.length,
       total: candidates.length,
+      images_imported: imagesImported,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
@@ -638,6 +874,62 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
     return res
       .status(500)
       .json({ error: "Error al importar candidatos: " + error.message });
+  }
+});
+
+// Endpoint para subir/actualizar solo la imagen de perfil de un candidato
+router.post("/candidates/:id/image", profileImageUpload.single("profile_image"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No se proporcionó imagen" });
+    }
+
+    const candidate = await prisma.candidate.findUnique({
+      where: { id },
+    });
+
+    if (!candidate) {
+      // Eliminar archivo subido si el candidato no existe
+      const filePath = path.join(uploadsDir, req.file.filename);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error("Error eliminando archivo:", err);
+      }
+      return res.status(404).json({ error: "Candidato no encontrado" });
+    }
+
+    // Eliminar imagen anterior si existe
+    if (candidate.profile_image_url) {
+      const oldImagePath = path.join(
+        __dirname,
+        "../../",
+        candidate.profile_image_url.replace(/^\/uploads\//, "uploads/")
+      );
+      try {
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      } catch (err) {
+        console.error("Error eliminando imagen anterior:", err);
+      }
+    }
+
+    const profile_image_url = `/uploads/candidates/${req.file.filename}`;
+
+    const updatedCandidate = await prisma.candidate.update({
+      where: { id },
+      data: { profile_image_url },
+    });
+
+    return res.json(updatedCandidate);
+  } catch (error: any) {
+    console.error("Error updating candidate image:", error);
+    return res.status(500).json({ error: "Error al actualizar imagen" });
   }
 });
 

@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { prisma } from "./lib/prisma.js";
 
 // Import routes
@@ -9,6 +11,9 @@ import adminRoutes from "./routes/admin.js";
 import { requestLogger } from "./middleware/logger.js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -40,6 +45,9 @@ app.use(express.json());
 
 // Request logging middleware
 app.use(requestLogger);
+
+// Servir archivos estáticos de imágenes
+app.use("/uploads/candidates", express.static(path.join(__dirname, "../uploads/candidates")));
 
 // Health check
 app.get("/health", (req, res) => {

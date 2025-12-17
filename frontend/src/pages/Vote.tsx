@@ -16,6 +16,7 @@ interface Category {
   candidates: {
     id: string
     display_name: string
+    profile_image_url: string | null
   }[]
 }
 
@@ -195,6 +196,7 @@ export default function Vote() {
                       options={category.candidates.map((c) => ({
                         value: c.id,
                         label: c.display_name,
+                        imageUrl: c.profile_image_url,
                       }))}
                       value={votes[category.id] || ''}
                       onValueChange={(value) => handleVoteChange(category.id, value)}

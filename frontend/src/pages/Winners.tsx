@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy } from 'lucide-react'
-import { apiRequest } from '@/lib/api'
+import { apiRequest, getProfileImageUrl } from '@/lib/api'
 
 interface Winner {
   category_id: string
@@ -10,6 +10,7 @@ interface Winner {
   category_description: string
   candidate_id: string | null
   candidate_name: string | null
+  profile_image_url: string | null
   votes: number
   announced: boolean
 }
@@ -88,8 +89,15 @@ export default function Winners() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 + 0.2 }}
-                        className="text-center space-y-2"
+                        className="text-center space-y-4"
                       >
+                        <div className="flex justify-center">
+                          <img
+                            src={getProfileImageUrl(winner.profile_image_url)}
+                            alt={winner.candidate_name || 'Ganador'}
+                            className="w-24 h-24 rounded-full object-cover border-2 border-gold/60 shadow-[0_0_20px_rgba(212,175,55,0.4)]"
+                          />
+                        </div>
                         <p className="text-3xl font-bold text-gold drop-shadow-[0_0_20px_rgba(212,175,55,0.6)]">
                           {winner.candidate_name}
                         </p>

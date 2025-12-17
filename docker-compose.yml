@@ -33,6 +33,8 @@ services:
       NODE_ENV: production
     ports:
       - "3001:3001"
+    volumes:
+      - backend_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -55,3 +57,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:

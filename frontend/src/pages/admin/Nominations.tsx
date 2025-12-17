@@ -4,13 +4,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
-import { apiRequest, getAuthHeaders } from '@/lib/api'
+import { apiRequest, getAuthHeaders, getProfileImageUrl } from '@/lib/api'
 
 interface Nomination {
   category_id: string
   category_name: string
   candidate_id: string
   candidate_name: string
+  profile_image_url: string | null
   count: number
   first_nomination: string
 }
@@ -230,7 +231,14 @@ export default function AdminNominations() {
                             className="flex-1 cursor-pointer"
                           >
                             <div className="flex justify-between items-center">
-                              <span className="font-medium">{nom.candidate_name}</span>
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={getProfileImageUrl(nom.profile_image_url)}
+                                  alt={nom.candidate_name}
+                                  className="w-10 h-10 rounded-full object-cover border border-gold/40"
+                                />
+                                <span className="font-medium">{nom.candidate_name}</span>
+                              </div>
                               <span className="text-sm text-muted-foreground">
                                 {nom.count} nominación{nom.count !== 1 ? 'es' : ''}
                               </span>

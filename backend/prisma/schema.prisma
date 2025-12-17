@@ -36,18 +36,19 @@ model Nomination {
   category      Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   candidate     Candidate @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
 
-  @@unique([category_id, candidate_id])
   @@index([category_id])
   @@index([candidate_id])
   @@index([created_at])
+  @@index([category_id, candidate_id])
 }
 
 model Candidate {
-  id          String   @id @default(uuid())
-  display_name String   @unique
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id               String   @id @default(uuid())
+  display_name     String   @unique
+  profile_image_url String?
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   nominations  Nomination[]
   category_candidates CategoryCandidate[]

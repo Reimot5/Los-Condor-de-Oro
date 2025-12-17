@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { Trophy } from 'lucide-react'
-import { apiRequest, getAuthHeaders } from '@/lib/api'
+import { apiRequest, getAuthHeaders, getProfileImageUrl } from '@/lib/api'
 
 interface Result {
   category_id: string
@@ -13,6 +13,7 @@ interface Result {
   candidates: {
     candidate_id: string
     candidate_name: string
+    profile_image_url: string | null
     votes: number
   }[]
   winner_candidate_id: string | null
@@ -136,6 +137,11 @@ export default function AdminResults() {
                         <span className="text-lg font-semibold text-gold">
                           #{index + 1}
                         </span>
+                        <img
+                          src={getProfileImageUrl(candidate.profile_image_url)}
+                          alt={candidate.candidate_name}
+                          className="w-10 h-10 rounded-full object-cover border border-gold/40"
+                        />
                         <span className="font-medium">{candidate.candidate_name}</span>
                       </div>
                       <span className="text-lg font-bold">{candidate.votes} votos</span>

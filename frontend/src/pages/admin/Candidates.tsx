@@ -16,11 +16,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { apiRequest, apiRequestFormData, getAuthHeaders } from '@/lib/api'
+import { apiRequest, apiRequestFormData, getAuthHeaders, getProfileImageUrl, API_URL } from '@/lib/api'
 
 interface Candidate {
   id: string
   display_name: string
+  profile_image_url: string | null
   is_active: boolean
   _count: {
     votes: number
@@ -47,6 +48,8 @@ export default function AdminCandidates() {
     display_name: '',
     is_active: true,
   })
+  const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const deletingRef = useRef<string | null>(null)
   const { toast } = useToast()
 
@@ -75,14 +78,41 @@ export default function AdminCandidates() {
 
     try {
       const method = editing ? 'PUT' : 'POST'
-      await apiRequest('/admin/candidates', {
-        method,
-        headers: {
-          ...getAuthHeaders(username, password),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editing ? { id: editing.id, display_name: formData.display_name, is_active: formData.is_active } : formData),
-      })
+      
+      // Si hay imagen, usar FormData
+      if (profileImage) {
+        const formDataToSend = new FormData()
+        formDataToSend.append('display_name', formData.display_name)
+        formDataToSend.append('is_active', String(formData.is_active))
+        formDataToSend.append('profile_image', profileImage)
+        
+        if (editing) {
+          formDataToSend.append('id', editing.id)
+        }
+
+        const response = await fetch(`${API_URL}/admin/candidates`, {
+          method,
+          headers: getAuthHeaders(username, password),
+          body: formDataToSend,
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Error al guardar')
+        }
+
+        await response.json()
+      } else {
+        // Sin imagen, usar JSON normal
+        await apiRequest('/admin/candidates', {
+          method,
+          headers: {
+            ...getAuthHeaders(username, password),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(editing ? { id: editing.id, display_name: formData.display_name, is_active: formData.is_active } : formData),
+        })
+      }
 
       toast({
         title: editing ? 'Candidato actualizado' : 'Candidato creado',
@@ -91,6 +121,8 @@ export default function AdminCandidates() {
       setShowForm(false)
       setEditing(null)
       setFormData({ display_name: '', is_active: true })
+      setProfileImage(null)
+      setImagePreview(null)
       fetchCandidates()
     } catch (error: any) {
       toast({
@@ -147,7 +179,21 @@ export default function AdminCandidates() {
       display_name: candidate.display_name,
       is_active: candidate.is_active,
     })
+    setImagePreview(candidate.profile_image_url ? getProfileImageUrl(candidate.profile_image_url) : null)
+    setProfileImage(null)
     setShowForm(true)
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setProfileImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   const handleImportExcel = async (e: React.FormEvent) => {
@@ -170,12 +216,17 @@ export default function AdminCandidates() {
         success: boolean
         imported: number
         total: number
+        images_imported?: number
         errors?: string[]
       }>('/admin/candidates/import', formData, getAuthHeaders(username, password))
 
+      const imagesText = data.images_imported 
+        ? ` (${data.images_imported} imagen${data.images_imported !== 1 ? 'es' : ''} importada${data.images_imported !== 1 ? 's' : ''})`
+        : ''
+      
       toast({
         title: 'Importación exitosa',
-        description: `Se importaron ${data.imported} candidatos de ${data.total} totales${data.errors ? `. ${data.errors.length} errores.` : ''}`,
+        description: `Se importaron ${data.imported} candidatos de ${data.total} totales${imagesText}${data.errors ? `. ${data.errors.length} error${data.errors.length !== 1 ? 'es' : ''}.` : ''}`,
       })
 
       if (data.errors && data.errors.length > 0) {
@@ -224,6 +275,8 @@ export default function AdminCandidates() {
             onClick={() => {
               setEditing(null)
               setFormData({ display_name: '', is_active: true })
+              setProfileImage(null)
+              setImagePreview(null)
               setShowForm(true)
               setShowImportForm(false)
             }}
@@ -239,18 +292,30 @@ export default function AdminCandidates() {
           <CardHeader>
             <CardTitle>Importar Candidatos desde Excel</CardTitle>
             <CardDescription>
-              El archivo Excel debe tener las columnas: display_name, is_active (opcional).
-              También se aceptan: "Nombre", "Miembro", "Activo"
+              <div className="space-y-2">
+                <p>Puedes subir un archivo Excel (.xlsx, .xls) o un ZIP que contenga:</p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>Un archivo Excel con las columnas: display_name, is_active (opcional)</li>
+                  <li>También se aceptan: "Nombre", "Miembro", "Activo"</li>
+                  <li>Imágenes WEBP o GIF: si el nombre tiene prefijo " | " (ej: "ζ | Wolves"), la imagen debe llamarse solo la parte después del prefijo (ej: "Wolves.webp" o "Wolves.gif")</li>
+                  <li>Si el nombre no tiene prefijo, la imagen debe llamarse igual al nombre completo</li>
+                </ul>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Las imágenes pueden estar en la raíz del ZIP o en cualquier carpeta.
+                  <br />
+                  <strong>Ejemplo:</strong> Si en el Excel está "ζ | Wolves", la imagen debe llamarse "Wolves.webp" o "Wolves.gif"
+                </p>
+              </div>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleImportExcel} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="excel-file">Archivo Excel (.xlsx, .xls)</Label>
+                <Label htmlFor="excel-file">Archivo Excel o ZIP (.xlsx, .xls, .zip)</Label>
                 <Input
                   id="excel-file"
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.zip"
                   onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                   required
                 />
@@ -297,6 +362,24 @@ export default function AdminCandidates() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile_image">Imagen de Perfil</Label>
+                <Input
+                  id="profile_image"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  onChange={handleImageChange}
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-gold/40"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -317,6 +400,8 @@ export default function AdminCandidates() {
                   onClick={() => {
                     setShowForm(false)
                     setEditing(null)
+                    setProfileImage(null)
+                    setImagePreview(null)
                   }}
                 >
                   Cancelar
@@ -332,13 +417,20 @@ export default function AdminCandidates() {
           <Card key={candidate.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{candidate.display_name}</CardTitle>
-                  <CardDescription>
-                    {candidate.category_candidates.length > 0 
-                      ? `Seleccionado en ${candidate.category_candidates.length} categoría(s)`
-                      : 'No seleccionado en ninguna categoría'}
-                  </CardDescription>
+                <div className="flex items-center gap-4">
+                  <img
+                    src={getProfileImageUrl(candidate.profile_image_url)}
+                    alt={candidate.display_name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gold/40"
+                  />
+                  <div>
+                    <CardTitle>{candidate.display_name}</CardTitle>
+                    <CardDescription>
+                      {candidate.category_candidates.length > 0 
+                        ? `Seleccionado en ${candidate.category_candidates.length} categoría(s)`
+                        : 'No seleccionado en ninguna categoría'}
+                    </CardDescription>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button

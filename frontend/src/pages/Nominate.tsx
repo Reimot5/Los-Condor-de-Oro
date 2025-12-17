@@ -18,6 +18,7 @@ interface Category {
 interface Candidate {
   id: string
   display_name: string
+  profile_image_url: string | null
 }
 
 export default function Nominate() {
@@ -208,6 +209,7 @@ export default function Nominate() {
                       options={candidates.map((c) => ({
                         value: c.id,
                         label: c.display_name,
+                        imageUrl: c.profile_image_url,
                       }))}
                       value={nominations[category.id] || ''}
                       onValueChange={(value) => handleNominationChange(category.id, value)}

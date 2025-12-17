@@ -14,6 +14,7 @@ import AdminNominations from './pages/admin/Nominations'
 import AdminCandidates from './pages/admin/Candidates'
 import AdminResults from './pages/admin/Results'
 import AdminImportCodes from './pages/admin/ImportCodes'
+import AdminVotes from './pages/admin/Votes'
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="event-state" element={<AdminEventState />} />
             <Route path="nominations" element={<AdminNominations />} />
+            <Route path="votes" element={<AdminVotes />} />
             <Route path="candidates" element={<AdminCandidates />} />
             <Route path="results" element={<AdminResults />} />
             <Route path="import-codes" element={<AdminImportCodes />} />

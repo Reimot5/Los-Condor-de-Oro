@@ -7,10 +7,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { getProfileImageUrl } from "@/lib/api"
 
 interface ComboboxOption {
   value: string
   label: string
+  imageUrl?: string | null
 }
 
 interface ComboboxProps {
@@ -58,7 +60,16 @@ export function Combobox({
           )}
           disabled={disabled}
         >
-          {selectedOption ? selectedOption.label : placeholder}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {selectedOption?.imageUrl && (
+              <img
+                src={getProfileImageUrl(selectedOption.imageUrl)}
+                alt={selectedOption.label}
+                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+              />
+            )}
+            <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+          </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -103,11 +114,18 @@ export function Combobox({
               >
                 <Check
                   className={cn(
-                    "mr-2 h-4 w-4",
+                    "mr-2 h-4 w-4 flex-shrink-0",
                     value === option.value ? "opacity-100" : "opacity-0"
                   )}
                 />
-                {option.label}
+                {option.imageUrl && (
+                  <img
+                    src={getProfileImageUrl(option.imageUrl)}
+                    alt={option.label}
+                    className="w-6 h-6 rounded-full object-cover mr-2 flex-shrink-0"
+                  />
+                )}
+                <span className="truncate">{option.label}</span>
               </button>
             ))
           )}

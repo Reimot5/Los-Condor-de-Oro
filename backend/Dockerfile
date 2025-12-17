@@ -54,6 +54,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads/candidates && chown -R nodejs:nodejs /app/uploads
+
 USER nodejs
 
 EXPOSE 3001

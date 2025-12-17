@@ -7,7 +7,8 @@ import {
   Trophy, 
   Settings, 
   FileText,
-  LogOut
+  LogOut,
+  CheckCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/admin/categories', label: 'Categorías', icon: Award },
   { href: '/admin/event-state', label: 'Estado del Evento', icon: Settings },
   { href: '/admin/nominations', label: 'Nominaciones', icon: FileText },
+  { href: '/admin/votes', label: 'Votaciones', icon: CheckCircle },
   { href: '/admin/candidates', label: 'Candidatos', icon: Users },
   { href: '/admin/results', label: 'Resultados y Ganadores', icon: Trophy },
   { href: '/admin/import-codes', label: 'Importar Códigos', icon: FileText },
