@@ -74,6 +74,13 @@ export default function AdminLayout() {
     return null
   }
 
+  // Si estamos en la ruta de presentación, renderizar solo el Outlet sin layout
+  const isPresentationRoute = location.pathname === '/admin/presentation'
+
+  if (isPresentationRoute) {
+    return <Outlet />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
