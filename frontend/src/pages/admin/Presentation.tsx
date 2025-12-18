@@ -86,7 +86,7 @@ export default function Presentation() {
   useEffect(() => {
     // Solo iniciar música si ya pasamos la slide del video (currentSlide > 0) y no se ha iniciado
     if (currentSlide > 0 && !backgroundMusic) {
-      const audio = new Audio('/public/Medal-of-Honor.mp3')
+      const audio = new Audio('/Medal-of-Honor.mp3')
       audio.loop = true
       audio.volume = 0.2 // Volumen moderado para música de fondo
       audio.play().catch((error) => {
@@ -155,7 +155,7 @@ export default function Presentation() {
     // Crear un audio element para el sonido de celebración
     // Usar un sonido de celebración desde una URL externa o un archivo local
     // Si tienes un archivo local, colócalo en public/ y usa: '/celebration-sound.mp3'
-    const audio = new Audio('/public/Battlecry.mp3') // Reemplazar con URL real o ruta local
+    const audio = new Audio('/Battlecry.mp3') // Reemplazar con URL real o ruta local
     const initialVolume = 0.4
     audio.volume = initialVolume
     audio.play().catch((error) => {
