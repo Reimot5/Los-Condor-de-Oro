@@ -32,7 +32,7 @@ interface Slide {
 }
 
 // Ruta del video de presentación local
-const PRESENTATION_VIDEO_URL = '/Premiacion.mp4'
+const PRESENTATION_VIDEO_URL = '/public/Premiacion.mp4'
 
 export default function Presentation() {
   const [categories, setCategories] = useState<CategoryData[]>([])
@@ -86,7 +86,7 @@ export default function Presentation() {
   useEffect(() => {
     // Solo iniciar música si ya pasamos la slide del video (currentSlide > 0) y no se ha iniciado
     if (currentSlide > 0 && !backgroundMusic) {
-      const audio = new Audio('/Medal-of-Honor.mp3')
+      const audio = new Audio('/public/Medal-of-Honor.mp3')
       audio.loop = true
       audio.volume = 0.2 // Volumen moderado para música de fondo
       audio.play().catch((error) => {
@@ -155,7 +155,7 @@ export default function Presentation() {
     // Crear un audio element para el sonido de celebración
     // Usar un sonido de celebración desde una URL externa o un archivo local
     // Si tienes un archivo local, colócalo en public/ y usa: '/celebration-sound.mp3'
-    const audio = new Audio('/Battlecry.mp3') // Reemplazar con URL real o ruta local
+    const audio = new Audio('/public/Battlecry.mp3') // Reemplazar con URL real o ruta local
     const initialVolume = 0.4
     audio.volume = initialVolume
     audio.play().catch((error) => {
@@ -241,7 +241,7 @@ export default function Presentation() {
       {/* Video de fondo de confeti - constante entre slides */}
       {currentSlideData.type !== 'video' && (
         <video
-          src="/confeti.mp4"
+          src="/public/confeti.mp4"
           className="fixed inset-0 w-full h-full object-cover opacity-50 pointer-events-none z-0"
           autoPlay
           loop
@@ -258,7 +258,7 @@ export default function Presentation() {
       {/* Video de fondo de foco de luz - constante entre slides */}
       {currentSlideData.type !== 'video' && (
         <video
-          src="/foco-de-luz.mp4"
+          src="/public/foco-de-luz.mp4"
           className="fixed inset-0 w-full h-full object-cover opacity-50 pointer-events-none z-0"
           autoPlay
           loop
