@@ -44,8 +44,12 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 
+# Install serve globally for SPA routing support
+RUN npm install -g serve
+
 USER nodejs
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+# Use serve with SPA mode - serves index.html for all routes
+CMD ["serve", "-s", "dist", "-l", "3000", "--single"]
