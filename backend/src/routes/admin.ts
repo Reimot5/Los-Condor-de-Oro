@@ -40,11 +40,19 @@ const profileImageUpload = multer({
   },
   fileFilter: (req, file, cb) => {
     // Solo aceptar imágenes
-    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Solo se permiten archivos de imagen (JPG, PNG, WEBP, GIF)"));
+      cb(
+        new Error("Solo se permiten archivos de imagen (JPG, PNG, WEBP, GIF)")
+      );
     }
   },
 });
@@ -121,6 +129,67 @@ router.get("/categories", async (req, res) => {
   } catch (error) {
     console.error("Error fetching categories:", error);
     return res.status(500).json({ error: "Error al obtener categorías" });
+  }
+});
+
+// Get selected candidates for categories
+router.get("/categories/selected-candidates", async (req, res) => {
+  try {
+    const categoryId = req.query.category_id as string | undefined;
+
+    const where: any = {};
+    if (categoryId) {
+      where.category_id = categoryId;
+    }
+
+    const categoryCandidates = await prisma.categoryCandidate.findMany({
+      where,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        candidate: {
+          select: {
+            id: true,
+            display_name: true,
+            profile_image_url: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: "asc",
+      },
+    });
+
+    // Agrupar por categoría
+    const grouped = categoryCandidates.reduce((acc: any, cc: any) => {
+      const catId = cc.category_id;
+      if (!acc[catId]) {
+        acc[catId] = {
+          category_id: catId,
+          category_name: cc.category.name,
+          candidates: [],
+        };
+      }
+      acc[catId].candidates.push({
+        candidate_id: cc.candidate.id,
+        candidate_name: cc.candidate.display_name,
+        profile_image_url: cc.candidate.profile_image_url,
+      });
+      return acc;
+    }, {});
+
+    const result = Object.values(grouped);
+
+    return res.json(result);
+  } catch (error) {
+    console.error("Error fetching selected candidates:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al obtener candidatos seleccionados" });
   }
 });
 
@@ -246,6 +315,7 @@ router.get("/nominations", async (req, res) => {
 router.get("/votes", async (req, res) => {
   try {
     const categoryId = req.query.category_id as string | undefined;
+    const onlySelected = req.query.only_selected === "true";
 
     const where: any = {};
     if (categoryId) {
@@ -255,7 +325,20 @@ router.get("/votes", async (req, res) => {
     const votes = await prisma.vote.findMany({
       where,
       include: {
-        category: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            short_description: true,
+            winner_candidate_id: true,
+            winner_announced: true,
+            category_candidates: {
+              select: {
+                candidate_id: true,
+              },
+            },
+          },
+        },
         candidate: true,
       },
       orderBy: { created_at: "desc" },
@@ -264,12 +347,27 @@ router.get("/votes", async (req, res) => {
     // Agrupar por candidato y categoría, contar votos
     const grouped = votes.reduce((acc: any, vote) => {
       const key = `${vote.category_id}-${vote.candidate_id}`;
+
+      // Si only_selected es true, filtrar solo candidatos seleccionados
+      if (onlySelected) {
+        const isSelected = vote.category.category_candidates.some(
+          (cc: any) => cc.candidate_id === vote.candidate_id
+        );
+        if (!isSelected) {
+          return acc;
+        }
+      }
+
       if (!acc[key]) {
         acc[key] = {
           category_id: vote.category_id,
           category_name: vote.category.name,
+          category_description: vote.category.short_description,
+          category_winner_candidate_id: vote.category.winner_candidate_id,
+          category_winner_announced: vote.category.winner_announced,
           candidate_id: vote.candidate_id,
           candidate_name: vote.candidate.display_name,
+          profile_image_url: vote.candidate.profile_image_url,
           count: 0,
           first_vote: vote.created_at,
         };
@@ -321,112 +419,123 @@ router.get("/candidates", async (req, res) => {
   }
 });
 
-router.post("/candidates", profileImageUpload.single("profile_image"), async (req, res) => {
-  try {
-    const { display_name, is_active } = req.body;
+router.post(
+  "/candidates",
+  profileImageUpload.single("profile_image"),
+  async (req, res) => {
+    try {
+      const { display_name, is_active } = req.body;
 
-    if (!display_name) {
-      return res.status(400).json({ error: "Nombre es requerido" });
-    }
-
-    let profile_image_url: string | null = null;
-    if (req.file) {
-      profile_image_url = `/uploads/candidates/${req.file.filename}`;
-    }
-
-    // Convertir is_active de string a boolean si viene como string
-    let isActiveBool: boolean = true;
-    if (is_active !== undefined) {
-      if (typeof is_active === "string") {
-        isActiveBool = is_active.toLowerCase() === "true";
-      } else {
-        isActiveBool = Boolean(is_active);
+      if (!display_name) {
+        return res.status(400).json({ error: "Nombre es requerido" });
       }
-    }
 
-    const candidate = await prisma.candidate.create({
-      data: {
-        display_name: display_name.trim(),
-        profile_image_url,
-        is_active: isActiveBool,
-      },
-    });
-
-    return res.json(candidate);
-  } catch (error: any) {
-    console.error("Error creating candidate:", error);
-    if (error.code === "P2002") {
-      return res
-        .status(400)
-        .json({ error: "Ya existe un candidato con ese nombre" });
-    }
-    return res.status(500).json({ error: "Error al crear candidato" });
-  }
-});
-
-router.put("/candidates", profileImageUpload.single("profile_image"), async (req, res) => {
-  try {
-    const { id, display_name, is_active } = req.body;
-
-    if (!id) {
-      return res.status(400).json({ error: "ID es requerido" });
-    }
-
-    // Obtener candidato actual para eliminar imagen anterior si existe
-    const currentCandidate = await prisma.candidate.findUnique({
-      where: { id },
-    });
-
-    if (!currentCandidate) {
-      return res.status(404).json({ error: "Candidato no encontrado" });
-    }
-
-    // Convertir is_active de string a boolean si viene como string
-    let isActiveBool: boolean | undefined = undefined;
-    if (is_active !== undefined) {
-      if (typeof is_active === "string") {
-        isActiveBool = is_active.toLowerCase() === "true";
-      } else {
-        isActiveBool = Boolean(is_active);
+      let profile_image_url: string | null = null;
+      if (req.file) {
+        profile_image_url = `/uploads/candidates/${req.file.filename}`;
       }
-    }
 
-    const updateData: any = {
-      ...(display_name && { display_name }),
-      ...(isActiveBool !== undefined && { is_active: isActiveBool }),
-    };
-
-    // Si se subió una nueva imagen
-    if (req.file) {
-      // Eliminar imagen anterior si existe
-      if (currentCandidate.profile_image_url) {
-        const oldImagePath = path.join(
-          __dirname,
-          "../../",
-          currentCandidate.profile_image_url.replace(/^\/uploads\//, "uploads/")
-        );
-        try {
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-          }
-        } catch (err) {
-          console.error("Error eliminando imagen anterior:", err);
+      // Convertir is_active de string a boolean si viene como string
+      let isActiveBool: boolean = true;
+      if (is_active !== undefined) {
+        if (typeof is_active === "string") {
+          isActiveBool = is_active.toLowerCase() === "true";
+        } else {
+          isActiveBool = Boolean(is_active);
         }
       }
-      updateData.profile_image_url = `/uploads/candidates/${req.file.filename}`;
+
+      const candidate = await prisma.candidate.create({
+        data: {
+          display_name: display_name.trim(),
+          profile_image_url,
+          is_active: isActiveBool,
+        },
+      });
+
+      return res.json(candidate);
+    } catch (error: any) {
+      console.error("Error creating candidate:", error);
+      if (error.code === "P2002") {
+        return res
+          .status(400)
+          .json({ error: "Ya existe un candidato con ese nombre" });
+      }
+      return res.status(500).json({ error: "Error al crear candidato" });
     }
-
-    const candidate = await prisma.candidate.update({
-      where: { id },
-      data: updateData,
-    });
-
-    return res.json(candidate);
-  } catch (error) {
-    console.error("Error updating candidate:", error);
-    return res.status(500).json({ error: "Error al actualizar candidato" });
   }
-});
+);
+
+router.put(
+  "/candidates",
+  profileImageUpload.single("profile_image"),
+  async (req, res) => {
+    try {
+      const { id, display_name, is_active } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: "ID es requerido" });
+      }
+
+      // Obtener candidato actual para eliminar imagen anterior si existe
+      const currentCandidate = await prisma.candidate.findUnique({
+        where: { id },
+      });
+
+      if (!currentCandidate) {
+        return res.status(404).json({ error: "Candidato no encontrado" });
+      }
+
+      // Convertir is_active de string a boolean si viene como string
+      let isActiveBool: boolean | undefined = undefined;
+      if (is_active !== undefined) {
+        if (typeof is_active === "string") {
+          isActiveBool = is_active.toLowerCase() === "true";
+        } else {
+          isActiveBool = Boolean(is_active);
+        }
+      }
+
+      const updateData: any = {
+        ...(display_name && { display_name }),
+        ...(isActiveBool !== undefined && { is_active: isActiveBool }),
+      };
+
+      // Si se subió una nueva imagen
+      if (req.file) {
+        // Eliminar imagen anterior si existe
+        if (currentCandidate.profile_image_url) {
+          const oldImagePath = path.join(
+            __dirname,
+            "../../",
+            currentCandidate.profile_image_url.replace(
+              /^\/uploads\//,
+              "uploads/"
+            )
+          );
+          try {
+            if (fs.existsSync(oldImagePath)) {
+              fs.unlinkSync(oldImagePath);
+            }
+          } catch (err) {
+            console.error("Error eliminando imagen anterior:", err);
+          }
+        }
+        updateData.profile_image_url = `/uploads/candidates/${req.file.filename}`;
+      }
+
+      const candidate = await prisma.candidate.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return res.json(candidate);
+    } catch (error) {
+      console.error("Error updating candidate:", error);
+      return res.status(500).json({ error: "Error al actualizar candidato" });
+    }
+  }
+);
 
 router.delete("/candidates", async (req, res) => {
   try {
@@ -464,73 +573,13 @@ router.delete("/candidates", async (req, res) => {
 
     // Manejar otros errores de Prisma
     if (error.code && error.code.startsWith("P")) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "No se puede eliminar el candidato debido a restricciones de la base de datos",
-        });
+      return res.status(400).json({
+        error:
+          "No se puede eliminar el candidato debido a restricciones de la base de datos",
+      });
     }
 
     return res.status(500).json({ error: "Error al eliminar candidato" });
-  }
-});
-
-// Results
-router.get("/results", async (req, res) => {
-  try {
-    const categories = await prisma.category.findMany({
-      where: { is_active: true },
-      include: {
-        category_candidates: {
-          include: {
-            candidate: {
-              include: {
-                _count: {
-                  select: {
-                    votes: {
-                      where: {
-                        category_id: undefined, // Will be filtered in map
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { order: "asc" },
-    });
-
-    const results = categories.map((category) => {
-      const candidates = category.category_candidates
-        .map((cc: any) => {
-          const votes = cc.candidate.votes.filter(
-            (v: any) => v.category_id === category.id
-          );
-          return {
-            candidate_id: cc.candidate.id,
-            candidate_name: cc.candidate.display_name,
-            votes: votes.length,
-          };
-        })
-        .sort((a: any, b: any) => b.votes - a.votes);
-
-      return {
-        category_id: category.id,
-        category_name: category.name,
-        category_description: category.short_description,
-        candidates,
-        winner_candidate_id: category.winner_candidate_id,
-        winner_announced: category.winner_announced,
-      };
-    });
-
-    return res.json(results);
-  } catch (error) {
-    console.error("Error fetching results:", error);
-    return res.status(500).json({ error: "Error al obtener resultados" });
   }
 });
 
@@ -584,8 +633,13 @@ router.post("/publish-winner", async (req, res) => {
 
     const updateData: any = {};
 
-    if (candidate_id) {
-      updateData.winner_candidate_id = candidate_id;
+    // Permitir establecer ganador (candidate_id) o removerlo (null)
+    if (candidate_id !== undefined) {
+      updateData.winner_candidate_id = candidate_id || null;
+      // Si se remueve el ganador, también remover el estado de anunciado
+      if (candidate_id === null) {
+        updateData.winner_announced = false;
+      }
     }
 
     if (announce !== undefined) {
@@ -601,6 +655,71 @@ router.post("/publish-winner", async (req, res) => {
   } catch (error) {
     console.error("Error publishing winner:", error);
     return res.status(500).json({ error: "Error al publicar ganador" });
+  }
+});
+
+// Get presentation data (categories with announced winners, nominees, and winners)
+router.get("/presentation-data", async (req, res) => {
+  try {
+    const categories = await prisma.category.findMany({
+      where: {
+        is_active: true,
+        winner_announced: true,
+        winner_candidate_id: { not: null },
+      },
+      include: {
+        winner_candidate: {
+          select: {
+            id: true,
+            display_name: true,
+            profile_image_url: true,
+          },
+        },
+        category_candidates: {
+          include: {
+            candidate: {
+              select: {
+                id: true,
+                display_name: true,
+                profile_image_url: true,
+              },
+            },
+          },
+          orderBy: {
+            created_at: "asc",
+          },
+        },
+      },
+      orderBy: { order: "asc" },
+    });
+
+    const presentationData = categories.map((category: any) => {
+      const nominees = category.category_candidates.map((cc: any) => ({
+        candidate_id: cc.candidate.id,
+        candidate_name: cc.candidate.display_name,
+        profile_image_url: cc.candidate.profile_image_url,
+      }));
+
+      return {
+        category_id: category.id,
+        category_name: category.name,
+        category_description: category.short_description,
+        nominees,
+        winner: {
+          candidate_id: category.winner_candidate?.id || null,
+          candidate_name: category.winner_candidate?.display_name || null,
+          profile_image_url:
+            category.winner_candidate?.profile_image_url || null,
+        },
+      };
+    });
+
+    return res.json(presentationData);
+  } catch (error) {
+    console.error("Error fetching presentation data:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al obtener datos de presentación" });
   }
 });
 
@@ -728,8 +847,8 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
     let imageMap: Map<string, Buffer> = new Map();
 
     // Verificar si es un archivo ZIP
-    const isZip = 
-      req.file.mimetype === "application/zip" || 
+    const isZip =
+      req.file.mimetype === "application/zip" ||
       req.file.mimetype === "application/x-zip-compressed" ||
       req.file.originalname.toLowerCase().endsWith(".zip");
 
@@ -742,14 +861,20 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
         let excelEntry = null;
         for (const entry of zipEntries) {
           const entryName = entry.entryName.toLowerCase();
-          
+
           // Buscar archivo Excel
-          if ((entryName.endsWith(".xlsx") || entryName.endsWith(".xls")) && !entry.isDirectory) {
+          if (
+            (entryName.endsWith(".xlsx") || entryName.endsWith(".xls")) &&
+            !entry.isDirectory
+          ) {
             excelEntry = entry;
           }
-          
+
           // Buscar imágenes WEBP y GIF
-          if ((entryName.endsWith(".webp") || entryName.endsWith(".gif")) && !entry.isDirectory) {
+          if (
+            (entryName.endsWith(".webp") || entryName.endsWith(".gif")) &&
+            !entry.isDirectory
+          ) {
             const ext = entryName.endsWith(".webp") ? ".webp" : ".gif";
             const imageName = path.basename(entry.entryName, ext);
             // Normalizar el nombre del archivo (sin prefijo, ya viene limpio)
@@ -762,15 +887,15 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
         }
 
         if (!excelEntry) {
-          return res.status(400).json({ 
-            error: "No se encontró archivo Excel (.xlsx o .xls) en el ZIP" 
+          return res.status(400).json({
+            error: "No se encontró archivo Excel (.xlsx o .xls) en el ZIP",
           });
         }
 
         workbook = XLSX.read(excelEntry.getData(), { type: "buffer" });
       } catch (zipError: any) {
-        return res.status(400).json({ 
-          error: "Error al procesar archivo ZIP: " + zipError.message 
+        return res.status(400).json({
+          error: "Error al procesar archivo ZIP: " + zipError.message,
         });
       }
     } else {
@@ -815,10 +940,10 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
       const displayNameTrimmed = String(display_name).trim();
       // Extraer el nombre después del prefijo " | " para buscar la imagen
       const extractedName = extractNameAfterPrefix(displayNameTrimmed);
-      
+
       // Buscar imagen (puede ser .webp o .gif)
       const imageBuffer = imageMap.get(extractedName) || null;
-      
+
       candidates.push({
         display_name: displayNameTrimmed, // Mantener el nombre original completo para la BD
         is_active: Boolean(is_active),
@@ -837,20 +962,22 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
     // Crear candidatos y guardar imágenes
     const created = [];
     let imagesImported = 0;
-    
+
     for (const candidate of candidates) {
       try {
         let profile_image_url: string | null = null;
 
         // Si hay imagen, guardarla
         if (candidate.imageBuffer) {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const uniqueSuffix = `${Date.now()}-${Math.round(
+            Math.random() * 1e9
+          )}`;
           // Obtener la extensión guardada o usar .webp por defecto
           const extBuffer = imageMap.get(`${candidate.extractedName}_ext`);
           const ext = extBuffer ? extBuffer.toString() : ".webp";
           const filename = `profile-${uniqueSuffix}${ext}`;
           const filePath = path.join(uploadsDir, filename);
-          
+
           try {
             fs.writeFileSync(filePath, candidate.imageBuffer);
             profile_image_url = `/uploads/candidates/${filename}`;
@@ -864,7 +991,7 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
 
         const createdCandidate = await prisma.candidate.upsert({
           where: { display_name: candidate.display_name },
-          update: { 
+          update: {
             is_active: candidate.is_active,
             ...(profile_image_url && { profile_image_url }),
           },
@@ -898,59 +1025,63 @@ router.post("/candidates/import", upload.single("file"), async (req, res) => {
 });
 
 // Endpoint para subir/actualizar solo la imagen de perfil de un candidato
-router.post("/candidates/:id/image", profileImageUpload.single("profile_image"), async (req, res) => {
-  try {
-    const { id } = req.params;
+router.post(
+  "/candidates/:id/image",
+  profileImageUpload.single("profile_image"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    if (!req.file) {
-      return res.status(400).json({ error: "No se proporcionó imagen" });
-    }
-
-    const candidate = await prisma.candidate.findUnique({
-      where: { id },
-    });
-
-    if (!candidate) {
-      // Eliminar archivo subido si el candidato no existe
-      const filePath = path.join(uploadsDir, req.file.filename);
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (err) {
-        console.error("Error eliminando archivo:", err);
+      if (!req.file) {
+        return res.status(400).json({ error: "No se proporcionó imagen" });
       }
-      return res.status(404).json({ error: "Candidato no encontrado" });
-    }
 
-    // Eliminar imagen anterior si existe
-    if (candidate.profile_image_url) {
-      const oldImagePath = path.join(
-        __dirname,
-        "../../",
-        candidate.profile_image_url.replace(/^\/uploads\//, "uploads/")
-      );
-      try {
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
+      const candidate = await prisma.candidate.findUnique({
+        where: { id },
+      });
+
+      if (!candidate) {
+        // Eliminar archivo subido si el candidato no existe
+        const filePath = path.join(uploadsDir, req.file.filename);
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error("Error eliminando archivo:", err);
         }
-      } catch (err) {
-        console.error("Error eliminando imagen anterior:", err);
+        return res.status(404).json({ error: "Candidato no encontrado" });
       }
+
+      // Eliminar imagen anterior si existe
+      if (candidate.profile_image_url) {
+        const oldImagePath = path.join(
+          __dirname,
+          "../../",
+          candidate.profile_image_url.replace(/^\/uploads\//, "uploads/")
+        );
+        try {
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        } catch (err) {
+          console.error("Error eliminando imagen anterior:", err);
+        }
+      }
+
+      const profile_image_url = `/uploads/candidates/${req.file.filename}`;
+
+      const updatedCandidate = await prisma.candidate.update({
+        where: { id },
+        data: { profile_image_url },
+      });
+
+      return res.json(updatedCandidate);
+    } catch (error: any) {
+      console.error("Error updating candidate image:", error);
+      return res.status(500).json({ error: "Error al actualizar imagen" });
     }
-
-    const profile_image_url = `/uploads/candidates/${req.file.filename}`;
-
-    const updatedCandidate = await prisma.candidate.update({
-      where: { id },
-      data: { profile_image_url },
-    });
-
-    return res.json(updatedCandidate);
-  } catch (error: any) {
-    console.error("Error updating candidate image:", error);
-    return res.status(500).json({ error: "Error al actualizar imagen" });
   }
-});
+);
 
 export default router;

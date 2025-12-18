@@ -60,7 +60,42 @@ export default function ValidateCode() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none" />
+      {/* Imagen de fondo con animación */}
+      <motion.div
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+        className="absolute inset-0 z-0"
+      >
+        <img
+          src="/fondo.jpg"
+          alt="Trofeo Los Cóndor de Oro"
+          className="w-full h-full object-contain object-center"
+        />
+        {/* Overlay oscuro para mejorar legibilidad */}
+        <div className="absolute inset-0 bg-black/40" />
+      </motion.div>
+
+      {/* Efecto de spotlight dorado animado */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+        className="absolute inset-0 bg-gradient-radial from-gold/10 via-transparent to-transparent pointer-events-none z-[1]"
+      />
+      
+      {/* Efecto de brillo sutil animado */}
+      <motion.div
+        animate={{
+          opacity: [0.3, 0.6, 0.3],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none z-[1]"
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

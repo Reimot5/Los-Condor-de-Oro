@@ -1,0 +1,7 @@
+# Videos pesados - se suben manualmente al VPS
+frontend/public/*.mp4
+# Mantener los archivos pequeños
+!frontend/public/*.jpg
+!frontend/public/*.png
+!frontend/public/*.mp3
+

@@ -29,16 +29,14 @@ export default function AdminDashboard() {
       const password = localStorage.getItem('admin_password')
       if (!username || !password) return
 
-      const [categories, nominations, candidates, results] = await Promise.all([
+      const [categories, nominations, candidates, votes] = await Promise.all([
         apiRequest<any[]>('/admin/categories', { headers: getAuthHeaders(username, password) }),
         apiRequest<any[]>('/admin/nominations', { headers: getAuthHeaders(username, password) }),
         apiRequest<any[]>('/admin/candidates', { headers: getAuthHeaders(username, password) }),
-        apiRequest<any[]>('/admin/results', { headers: getAuthHeaders(username, password) }),
+        apiRequest<any[]>('/admin/votes?only_selected=true', { headers: getAuthHeaders(username, password) }),
       ])
 
-      const totalVotes = results.reduce((sum, r) => 
-        sum + r.candidates.reduce((s: number, c: any) => s + c.votes, 0), 0
-      )
+      const totalVotes = votes.reduce((sum: number, v: any) => sum + v.count, 0)
 
       setStats({
         categories: categories.length,

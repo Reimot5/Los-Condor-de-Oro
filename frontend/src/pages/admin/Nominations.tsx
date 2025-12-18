@@ -21,11 +21,24 @@ interface Category {
   name: string
 }
 
+interface SelectedCandidate {
+  candidate_id: string
+  candidate_name: string
+  profile_image_url: string | null
+}
+
+interface SelectedCandidatesByCategory {
+  category_id: string
+  category_name: string
+  candidates: SelectedCandidate[]
+}
+
 export default function AdminNominations() {
   const [nominations, setNominations] = useState<Nomination[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedCandidates, setSelectedCandidates] = useState<Record<string, string[]>>({})
+  const [savedCandidates, setSavedCandidates] = useState<Record<string, SelectedCandidate[]>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
@@ -35,6 +48,10 @@ export default function AdminNominations() {
 
   useEffect(() => {
     fetchCategories()
+    fetchSavedCandidates()
+  }, [])
+
+  useEffect(() => {
     fetchNominations()
   }, [selectedCategory])
 
@@ -46,6 +63,23 @@ export default function AdminNominations() {
       setCategories(data)
     } catch (error) {
       console.error('Error fetching categories:', error)
+    }
+  }
+
+  const fetchSavedCandidates = async () => {
+    try {
+      const data = await apiRequest<SelectedCandidatesByCategory[]>('/admin/categories/selected-candidates', {
+        headers: getAuthHeaders(username, password),
+      })
+      
+      // Convertir a formato Record para fácil acceso
+      const saved: Record<string, SelectedCandidate[]> = {}
+      data.forEach((item) => {
+        saved[item.category_id] = item.candidates
+      })
+      setSavedCandidates(saved)
+    } catch (error) {
+      console.error('Error fetching saved candidates:', error)
     }
   }
 
@@ -132,6 +166,9 @@ export default function AdminNominations() {
         title: 'Candidatos seleccionados',
         description: `Se seleccionaron ${candidateIds.length} candidatos para esta categoría`,
       })
+      
+      // Actualizar la lista de candidatos guardados
+      await fetchSavedCandidates()
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -191,6 +228,7 @@ export default function AdminNominations() {
           ).map(([categoryId, categoryNominations]) => {
             const categoryName = categoryNominations[0]?.category_name || ''
             const selected = selectedCandidates[categoryId] || []
+            const saved = savedCandidates[categoryId] || []
             
             return (
               <Card key={categoryId}>
@@ -212,13 +250,39 @@ export default function AdminNominations() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {saved.length > 0 && (
+                    <div className="mb-6 p-4 bg-gold/10 border border-gold rounded-lg">
+                      <h3 className="font-semibold text-gold mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-gold rounded-full"></span>
+                        Candidatos Guardados ({saved.length})
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
+                        {saved.map((candidate) => (
+                          <div
+                            key={candidate.candidate_id}
+                            className="flex items-center gap-2 px-3 py-2 bg-background border border-gold/30 rounded-lg"
+                          >
+                            <img
+                              src={getProfileImageUrl(candidate.profile_image_url)}
+                              alt={candidate.candidate_name}
+                              className="w-8 h-8 rounded-full object-cover border border-gold/40"
+                            />
+                            <span className="text-sm font-medium">{candidate.candidate_name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {categoryNominations.map((nom) => {
                       const isSelected = selected.includes(nom.candidate_id)
+                      const isSaved = saved.some(c => c.candidate_id === nom.candidate_id)
                       return (
                         <div
                           key={nom.candidate_id}
-                          className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent"
+                          className={`flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent ${
+                            isSaved ? 'bg-gold/5 border-gold/30' : ''
+                          }`}
                         >
                           <Checkbox
                             id={`${categoryId}-${nom.candidate_id}`}
@@ -237,7 +301,14 @@ export default function AdminNominations() {
                                   alt={nom.candidate_name}
                                   className="w-10 h-10 rounded-full object-cover border border-gold/40"
                                 />
-                                <span className="font-medium">{nom.candidate_name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{nom.candidate_name}</span>
+                                  {isSaved && (
+                                    <span className="text-xs px-2 py-0.5 bg-gold/20 text-gold rounded-full font-medium">
+                                      Guardado
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <span className="text-sm text-muted-foreground">
                                 {nom.count} nominación{nom.count !== 1 ? 'es' : ''}

@@ -59,9 +59,9 @@ export default function LandingPage({ state }: LandingPageProps) {
         className="absolute inset-0 z-0"
       >
         <img
-          src="/fondo.png"
+          src="/fondo.jpg"
           alt="Trofeo Los Cóndor de Oro"
-          className="w-full h-full object-cover object-center"
+          className="w-full h-full object-contain object-center"
         />
         {/* Overlay oscuro para mejorar legibilidad */}
         <div className="absolute inset-0 bg-black/40" />

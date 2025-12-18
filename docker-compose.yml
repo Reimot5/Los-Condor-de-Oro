@@ -52,6 +52,10 @@ services:
       - VITE_API_URL=${VITE_API_URL:-}
     ports:
       - "3000:3000"
+    volumes:
+      # Montar videos: localmente desde ./frontend/public, en VPS desde /videos
+      # En VPS, configurar VIDEOS_PATH=/videos en el archivo .env
+      - ${VIDEOS_PATH:-./frontend/public}:/app/dist/public
     depends_on:
       - backend
 
