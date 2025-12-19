@@ -46,44 +46,55 @@ export default function Winners() {
   const pendingWinners = winners.filter((w) => !w.announced && w.candidate_id)
 
   return (
-    <div className="min-h-screen bg-black py-12 px-4 relative overflow-hidden">
-      {/* Imagen de fondo con animación */}
-      <motion.div
-        initial={{ opacity: 0, scale: 1.1 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        className="absolute inset-0 z-0"
-      >
-        <img
-          src="/fondo.jpg"
-          alt="Trofeo Los Cóndor de Oro"
-          className="w-full h-full object-contain object-center"
-        />
-        {/* Overlay oscuro para mejorar legibilidad */}
-        <div className="absolute inset-0 bg-black/40" />
-      </motion.div>
+    <div className="min-h-screen bg-black relative">
+      {/* Fondo fijo */}
+      <div className="fixed inset-0 z-0">
+        {/* Imagen de fondo con animación */}
+        <motion.div
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="absolute inset-0"
+        >
+          <img
+            src="/fondo.jpg"
+            alt="Trofeo Los Cóndor de Oro"
+            className="w-full h-full object-contain object-center"
+          />
+          {/* Overlay oscuro para mejorar legibilidad */}
+          <div className="absolute inset-0 bg-black/40" />
+        </motion.div>
 
-      {/* Efecto de spotlight dorado animado */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 0.5 }}
-        className="absolute inset-0 bg-gradient-radial from-gold/10 via-transparent to-transparent pointer-events-none z-[1]"
-      />
-      
-      {/* Efecto de brillo sutil animado */}
-      <motion.div
-        animate={{
-          opacity: [0.3, 0.6, 0.3],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none z-[1]"
-      />
-      <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+        {/* Efecto de spotlight dorado animado */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.5 }}
+          className="absolute inset-0 bg-gradient-radial from-gold/10 via-transparent to-transparent pointer-events-none"
+        />
+        
+        {/* Efecto de brillo sutil animado */}
+        <motion.div
+          animate={{
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent pointer-events-none"
+        />
+      </div>
+
+      {/* Contenido con scroll */}
+      <div className="relative z-10 min-h-screen py-12 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto space-y-8"
+        >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -103,7 +114,7 @@ export default function Winners() {
         {announcedWinners.length > 0 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gold drop-shadow-[0_0_15px_rgba(212,175,55,0.5)]">Ganadores Anunciados</h2>
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 auto-rows-fr">
               {announcedWinners.map((winner, index) => (
                 <motion.div
                   key={winner.category_id}
@@ -111,15 +122,15 @@ export default function Winners() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <Card className="border-2 border-gold/40 bg-black/60 backdrop-blur-md shadow-[0_0_40px_rgba(212,175,55,0.3)]">
-                    <CardHeader>
+                  <Card className="border-2 border-gold/40 bg-black/60 backdrop-blur-md shadow-[0_0_40px_rgba(212,175,55,0.3)] h-full flex flex-col">
+                    <CardHeader className="flex-shrink-0">
                       <CardTitle className="text-gold flex items-center gap-2 font-bold drop-shadow-[0_0_10px_rgba(212,175,55,0.5)]">
                         <Trophy className="h-5 w-5" />
                         {winner.category_name}
                       </CardTitle>
-                      <CardDescription className="text-white/80">{winner.category_description}</CardDescription>
+                      <CardDescription className="text-white/80 line-clamp-2">{winner.category_description}</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col justify-center">
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -153,12 +164,12 @@ export default function Winners() {
             <h2 className="text-2xl font-bold text-white">Próximos Anuncios</h2>
             <div className="grid gap-4">
               {pendingWinners.map((winner) => (
-                <Card key={winner.category_id} className="border-2 border-gold/20 bg-black/40 backdrop-blur-sm opacity-60">
-                  <CardHeader>
+                <Card key={winner.category_id} className="border-2 border-gold/20 bg-black/40 backdrop-blur-sm opacity-60 h-full flex flex-col">
+                  <CardHeader className="flex-shrink-0">
                     <CardTitle className="text-white">{winner.category_name}</CardTitle>
-                    <CardDescription className="text-white/70">{winner.category_description}</CardDescription>
+                    <CardDescription className="text-white/70 line-clamp-2">{winner.category_description}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex items-center justify-center">
                     <p className="text-gold-light">Próximamente...</p>
                   </CardContent>
                 </Card>
@@ -176,6 +187,7 @@ export default function Winners() {
             </CardContent>
           </Card>
         )}
+        </motion.div>
       </div>
     </div>
   )

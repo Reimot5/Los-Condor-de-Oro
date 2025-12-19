@@ -406,6 +406,7 @@ router.get("/categories", async (req, res) => {
                   select: {
                     id: true,
                     display_name: true,
+                    profile_image_url: true,
                   },
                 },
               },
