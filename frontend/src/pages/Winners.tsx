@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy } from 'lucide-react'
@@ -18,10 +19,30 @@ interface Winner {
 export default function Winners() {
   const [winners, setWinners] = useState<Winner[]>([])
   const [loading, setLoading] = useState(true)
+  const [accessAllowed, setAccessAllowed] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    fetchWinners()
+    checkAccess()
   }, [])
+
+  const checkAccess = async () => {
+    try {
+      const eventState = await apiRequest<{ state: string; winners_visible: boolean }>('/event-state')
+      
+      if (eventState.state !== 'CLOSED' || !eventState.winners_visible) {
+        // Redirigir al home si no se cumple la condición
+        navigate('/')
+        return
+      }
+      
+      setAccessAllowed(true)
+      fetchWinners()
+    } catch (error) {
+      console.error('Error checking access:', error)
+      navigate('/')
+    }
+  }
 
   const fetchWinners = async () => {
     try {
@@ -34,7 +55,7 @@ export default function Winners() {
     }
   }
 
-  if (loading) {
+  if (loading || !accessAllowed) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
         <p className="text-muted-foreground">Cargando ganadores...</p>

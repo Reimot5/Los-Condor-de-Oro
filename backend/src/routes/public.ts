@@ -533,4 +533,15 @@ router.get("/winners", async (req, res) => {
   }
 });
 
+// Get event state (public)
+router.get("/event-state", async (req, res) => {
+  try {
+    const eventState = await prisma.eventState.findFirst();
+    return res.json(eventState || { state: "SETUP", winners_visible: false });
+  } catch (error) {
+    console.error("Error fetching event state:", error);
+    return res.status(500).json({ error: "Error al obtener estado" });
+  }
+});
+
 export default router;

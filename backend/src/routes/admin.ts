@@ -74,7 +74,7 @@ router.post("/login", (req, res) => {
 router.get("/event-state", async (req, res) => {
   try {
     const eventState = await prisma.eventState.findFirst();
-    return res.json(eventState || { state: "SETUP" });
+    return res.json(eventState || { state: "SETUP", winners_visible: false });
   } catch (error) {
     console.error("Error fetching event state:", error);
     return res.status(500).json({ error: "Error al obtener estado" });
@@ -83,7 +83,7 @@ router.get("/event-state", async (req, res) => {
 
 router.put("/event-state", async (req, res) => {
   try {
-    const { state } = req.body;
+    const { state, winners_visible } = req.body;
 
     if (!["SETUP", "NOMINATIONS", "VOTING", "CLOSED"].includes(state)) {
       return res.status(400).json({ error: "Estado inválido" });
@@ -91,14 +91,22 @@ router.put("/event-state", async (req, res) => {
 
     let eventState = await prisma.eventState.findFirst();
 
+    const updateData: any = { state };
+    if (typeof winners_visible === "boolean") {
+      updateData.winners_visible = winners_visible;
+    }
+
     if (eventState) {
       eventState = await prisma.eventState.update({
         where: { id: eventState.id },
-        data: { state },
+        data: updateData,
       });
     } else {
       eventState = await prisma.eventState.create({
-        data: { state },
+        data: {
+          state,
+          winners_visible: winners_visible ?? false,
+        },
       });
     }
 

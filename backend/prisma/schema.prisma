@@ -101,8 +101,9 @@ model MemberCode {
 }
 
 model EventState {
-  id        String   @id @default("1")
-  state     String   // SETUP | NOMINATIONS | VOTING | CLOSED
-  updated_at DateTime @updatedAt
+  id             String   @id @default("1")
+  state          String   // SETUP | NOMINATIONS | VOTING | CLOSED
+  winners_visible Boolean  @default(false)
+  updated_at     DateTime @updatedAt
 }
 

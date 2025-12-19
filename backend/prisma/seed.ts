@@ -24,126 +24,120 @@ async function main() {
     {
       name: "Mejor Comandante",
       short_description:
-        "Liderazgo general, coordinación y toma de decisiones estratégicas.",
+        "Comandante que destaca por coordinación, toma de decisiones estratégicas, manejo de logística, buena lectura de mapa y capacidad de sostener la defensa durante las partidas.",
       order: 1,
       is_active: true,
     },
     {
       name: "Mejor Oficial",
       short_description:
-        "Mejor líder de escuadra en comunicación, táctica y control del grupo.",
+        "Líder de escuadra que destacó por comunicación clara, colocación eficiente de OPs y lectura del mapa. Aquel que supo cuándo atacar, cuándo frenar y cuándo rotar. Capaz de adaptarse a circunstancias difíciles durante la partida.",
       order: 2,
       is_active: true,
     },
     {
-      name: "Mejor Comandante de Tanques",
+      name: "Mejor Infantería",
       short_description:
-        "Coordinación de su unidad, posicionamiento estratégico y decisiones dentro del tanque.",
+        "Soldado mas completo. Sigue ordenes, sabe cuando cambiar de rol y los utiliza con efectividad, sabe posicionarse y tiene lectura de mapa.",
       order: 3,
-      is_active: true,
-    },
-    {
-      name: "Mejor Tripulante de Tanque",
-      short_description:
-        "Habilidad en conducción, artillería, apoyo a la infantería y efectividad general del tanque.",
-      order: 4,
-      is_active: true,
-    },
-    {
-      name: "Mejor Oteador",
-      short_description:
-        "Mejor proveedor de información, spotting, visión del mapa y posicionamiento.",
-      order: 5,
-      is_active: true,
-    },
-    {
-      name: "Mejor AT",
-      short_description:
-        "Jugador más efectivo en destrucción de blindados y control anti-tanque.",
-      order: 6,
       is_active: true,
     },
     {
       name: "Mejor MG",
       short_description:
-        "Dominio de líneas, supresión y apoyo a la infantería.",
+        "Jugador con domino en supresión y control de líneas, aquel capaz de posicionarse en lugares clave con gran impacto en las partidas.",
+      order: 4,
+      is_active: true,
+    },
+    {
+      name: "Mejor AT",
+      short_description:
+        "Jugador más efectivo en la destrucción de tanques, garrys y OPs con armas antitanque. Activo en la planificación de AT sniping.",
+      order: 5,
+      is_active: true,
+    },
+    {
+      name: "Mejor Oficial de Reconocimiento",
+      short_description:
+        "Mejor proveedor de información a través de bengalas. Sabe cuando y donde lanzar bengalas, capaz de mantener y dar soporte a las combinas y defensa.",
+      order: 6,
+      is_active: true,
+    },
+    {
+      name: "Mejor Artillero",
+      short_description:
+        "Precisión, eficiencia y aporte táctico desde artillería.",
       order: 7,
       is_active: true,
     },
     {
-      name: "Mejor Infantería Común",
+      name: "Mejor Comandante de Tanque",
       short_description:
-        "Jugador más completo en los roles estándar del núcleo de infantería.",
+        "Comandante que destaco por buena lectura del terreno y mapa, elección de tácticas adecuadas, coordinación con infantería y decisiones que mantuvieron el tanque vivo y con gran impacto durante las partidas.",
       order: 8,
       is_active: true,
     },
     {
-      name: "Mejor Killer",
+      name: "Mejor Tripulante de Tanque",
       short_description:
-        "Mayor impacto letal, jugadas decisivas y consistencia ofensiva.",
+        "Tripulante con dominio en conducción, disparos, reacción, seguimiento de ordenes y efectividad general del tanque.",
       order: 9,
       is_active: true,
     },
     {
-      name: "Mejor Artillería",
+      name: "Mejor Estratega",
       short_description:
-        "Precisión, eficiencia y aporte táctico desde artillería/morteros.",
+        "Reconocimiento a quien entiende la partida antes de que empiece. Jugador que analiza el mapa, anticipa escenarios y define el plan general del equipo.",
       order: 10,
       is_active: true,
     },
     {
       name: "Revelación del Año (Enero-Junio)",
       short_description:
-        "Jugador con mayor crecimiento y mejora notoria en ese periodo.",
+        "Jugador que nadie tenia en el radar pero termino siendo imposible de ignorar. Aquel con crecimiento acelerado en la primera mitad del año.",
       order: 11,
       is_active: true,
     },
     {
       name: "Revelación del Año (Junio-Diciembre)",
       short_description:
-        "Jugador con mayor crecimiento en la segunda mitad del año.",
+        "Jugador que nadie tenia en el radar pero termino siendo imposible de ignorar. Aquel con crecimiento acelerado en la segunda mitad del año.",
       order: 12,
+      is_active: true,
+    },
+    {
+      name: "Recluta eterno",
+      short_description:
+        "Homenaje a la persona que desafía o desafió los ascensos partida tras partida de manera eterna. Jugador que esta o estuvo mas tiempo como recluta.",
+      order: 13,
       is_active: true,
     },
     {
       name: "Jugador Más Disciplinado",
       short_description:
         "Conducta ejemplar, orden, puntualidad y cumplimiento de roles.",
-      order: 13,
+      order: 14,
       is_active: true,
     },
     {
       name: "Jugador Más Activo en Eventos",
       short_description:
         "Mayor asistencia, compromiso y constancia en actividades del clan.",
-      order: 14,
-      is_active: true,
-    },
-    {
-      name: "Mejor Sniping",
-      short_description:
-        "Precisión, posicionamiento y efectividad como sniper/spotter.",
       order: 15,
       is_active: true,
     },
     {
-      name: "Mejor Jugada del Año",
-      short_description: "La acción más épica, decisiva o memorable del año.",
-      order: 16,
-      is_active: true,
-    },
-    {
-      name: "Estratega del Año",
+      name: "Killer del Año",
       short_description:
-        "Mejor lectura del mapa, anticipación táctica y planificación estratégica.",
-      order: 17,
+        "Jugador mas letal del año con gran impacto en las partidas a través de eliminación constante y decisiva del enemigo.",
+      order: 16,
       is_active: true,
     },
     {
       name: "Legionario del Año",
       short_description:
-        "Máxima distinción: aporte global, actitud, compromiso y constancia.",
-      order: 18,
+        "Legionario mas completo, aquel que representa el espíritu de Legión Condor. Gran dominio de los roles, activo, constante, comprometido a lo largo del año.",
+      order: 17,
       is_active: true,
     },
   ];

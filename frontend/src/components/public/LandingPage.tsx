@@ -7,9 +7,10 @@ type EventState = 'SETUP' | 'NOMINATIONS' | 'VOTING' | 'CLOSED'
 
 interface LandingPageProps {
   state: EventState
+  winnersVisible?: boolean
 }
 
-export default function LandingPage({ state }: LandingPageProps) {
+export default function LandingPage({ state, winnersVisible = false }: LandingPageProps) {
   const navigate = useNavigate()
 
   const getStateInfo = () => {
@@ -36,7 +37,7 @@ export default function LandingPage({ state }: LandingPageProps) {
         return {
           title: 'Evento Cerrado',
           description: 'Las votaciones han finalizado. Descubre a los ganadores.',
-          action: { label: 'Ver Ganadores', path: '/winners' },
+          action: winnersVisible ? { label: 'Ver Ganadores', path: '/winners' } : null,
         }
       default:
         return {
@@ -152,7 +153,7 @@ export default function LandingPage({ state }: LandingPageProps) {
             </motion.div>
           )}
 
-          {state === 'CLOSED' && (
+          {state === 'CLOSED' && winnersVisible && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
